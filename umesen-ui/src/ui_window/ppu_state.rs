@@ -9,6 +9,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
         "V: ${:04x} ({})",
         ppu.registers.v.0, ppu.registers.v,
     ));
+    ui.label(format!("Fine x: {}", ppu.registers.fine_x));
     ui.label(format!("Latch: {}", ppu.registers.latch));
     ui.label(format!("Scanline: {}", ppu.registers.scanline));
     ui.label(format!("Dot: {}", ppu.registers.dot));

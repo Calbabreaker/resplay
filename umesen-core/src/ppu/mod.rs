@@ -15,6 +15,7 @@ pub use vram::VramRegister;
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 240;
 pub const MAX_SPRITES_PER_SCAN: usize = 8;
+pub const TILE_SIZE: usize = 8;
 pub const PRERENDER_SCANLINE: usize = 261;
 
 pub type ScreenPixels = FixedArray<FixedArray<u8, 3>, { WIDTH * HEIGHT }>;
@@ -328,6 +329,6 @@ pub fn get_pattern_tile_addresses(tile_number: u16, fine_y: u16) -> (u16, u16) {
     // ||++++-++++----- N: Tile number from name table
     // |+-------------- H: Half of pattern table (0: "left"; 1: "right")
     // +--------------- 0: Pattern table is at $0000-$1FFF
-    let address = ((tile_number) << 4) | (fine_y % 8);
-    ((address), (address + 8))
+    let address = ((tile_number) << 4) | (fine_y % TILE_SIZE as u16);
+    ((address), (address + TILE_SIZE as u16))
 }

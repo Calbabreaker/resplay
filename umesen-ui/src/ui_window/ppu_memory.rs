@@ -1,6 +1,6 @@
 use umesen_core::ppu::{
-    NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, PATTERN_TILE_COUNT, VramRegister, add_bit_planes,
-    get_pattern_tile_addresses,
+    NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, PATTERN_TILE_COUNT, TILE_SIZE, VramRegister,
+    add_bit_planes, get_pattern_tile_addresses,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
@@ -138,11 +138,15 @@ fn show_nametables(ui: &mut egui::Ui, state: &mut crate::State) {
     };
     let response = show_pattern_tiles(ui, state, &config, get_tile_info_fn);
     let t = state.emu.ppu().registers.t;
+    let tile_x =
+        t.get(VramRegister::COARSE_X) + t.get(VramRegister::NAMETABLE_X) * NAMETABLE_SIZE_X;
+    let tile_y =
+        t.get(VramRegister::COARSE_Y) + t.get(VramRegister::NAMETABLE_Y) * NAMETABLE_SIZE_Y;
     crate::egui_util::draw_rect_wrapped(
         ui,
         get_screen_rect(
-            t.get(VramRegister::COARSE_X) + t.get(VramRegister::NAMETABLE_X) * NAMETABLE_SIZE_X,
-            t.get(VramRegister::COARSE_Y) + t.get(VramRegister::NAMETABLE_Y) * NAMETABLE_SIZE_Y,
+            tile_x * TILE_SIZE as u16 + state.emu.ppu().registers.fine_x as u16,
+            tile_y * TILE_SIZE as u16 + t.get(VramRegister::FINE_Y),
             NAMETABLE_SIZE_X,
             NAMETABLE_SIZE_Y,
             config.image_scale,
@@ -227,7 +231,7 @@ fn show_pattern_tiles<'a>(
 ) -> egui::Response {
     let [tile_count_x, tile_count_y] = config.tile_count;
     let id = egui::Id::new(&config.name);
-    let image_size = [tile_count_x * 8, tile_count_y * 8];
+    let image_size = [tile_count_x * TILE_SIZE, tile_count_y * TILE_SIZE];
     let texture = state.texture_map.get(config.name.clone(), image_size);
     let ppu = state.emu.ppu();
 
@@ -236,17 +240,17 @@ fn show_pattern_tiles<'a>(
         for tile_x in 0..tile_count_x {
             let tile_index = (tile_y * tile_count_x) + tile_x;
             let (tile_number, palette) = get_tile_info_fn(tile_index, ppu);
-            for y in 0..8 {
-                let (lsb_address, msb_address) = get_pattern_tile_addresses(tile_number, y);
+            for y in 0..TILE_SIZE {
+                let (lsb_address, msb_address) = get_pattern_tile_addresses(tile_number, y as u16);
 
-                for x in 0..8 {
+                for x in 0..TILE_SIZE {
                     let pixel_index = add_bit_planes(
                         ppu.registers.bus.peek_read(lsb_address),
                         ppu.registers.bus.peek_read(msb_address),
                         0b1000_0000 >> x,
                     );
-                    let pixel_x = tile_x * 8 + x as usize;
-                    let pixel_y = tile_y * 8 + y as usize;
+                    let pixel_x = tile_x * TILE_SIZE + x;
+                    let pixel_y = tile_y * TILE_SIZE + y;
                     let c = palette[pixel_index as usize];
                     pixels[pixel_y * image_size[0] + pixel_x] =
                         egui::Color32::from_rgb(c[0], c[1], c[2]);
@@ -265,7 +269,7 @@ fn show_pattern_tiles<'a>(
         .on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.clicked() {
         let pos = ui.input(|i| i.pointer.interact_pos()).unwrap_or_default() - response.rect.min;
-        let tile_pos = pos / (8. * config.image_scale);
+        let tile_pos = pos / (TILE_SIZE as f32 * config.image_scale);
         let tile_index = (tile_pos.y as usize * tile_count_x) + tile_pos.x as usize;
         if tile_index < tile_count_x * tile_count_y {
             ui.memory_mut(|m| m.data.insert_persisted(id, tile_index))
@@ -273,9 +277,9 @@ fn show_pattern_tiles<'a>(
     }
 
     if let Some(i) = ui.memory_mut(|m| m.data.get_persisted::<usize>(id)) {
-        let x = (i % tile_count_x) as u16;
-        let y = (i / tile_count_x) as u16;
-        let rect = get_screen_rect(x, y, 1, 1, config.image_scale, response.rect);
+        let x = (i % tile_count_x) * TILE_SIZE;
+        let y = (i / tile_count_x) * TILE_SIZE;
+        let rect = get_screen_rect(x as u16, y as u16, 1, 1, config.image_scale, response.rect);
         ui.painter()
             .rect_stroke(rect, 0., (1., egui::Color32::RED), egui::StrokeKind::Inside);
     }
@@ -283,15 +287,15 @@ fn show_pattern_tiles<'a>(
 }
 
 fn get_screen_rect(
-    tile_x: u16,
-    tile_y: u16,
+    x: u16,
+    y: u16,
     tile_count_x: u16,
     tile_count_y: u16,
     image_scale: f32,
     image_rect: egui::Rect,
 ) -> egui::Rect {
     egui::Rect::from_min_size(
-        egui::pos2(tile_x as f32, tile_y as f32) * (8. * image_scale) + image_rect.min.to_vec2(),
-        egui::vec2(tile_count_x as f32, tile_count_y as f32) * (8. * image_scale),
+        egui::pos2(x as f32, y as f32) * image_scale + image_rect.min.to_vec2(),
+        egui::vec2(tile_count_x as f32, tile_count_y as f32) * (TILE_SIZE as f32 * image_scale),
     )
 }
