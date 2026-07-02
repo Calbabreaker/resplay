@@ -1,5 +1,5 @@
 use crate::{
-    cartridge::{Bank, BankMapping, Mapper, Mirroring},
+    cartridge::{Bank, KbUnit, Mapper, Mirroring},
     cpu::IrqStatus,
 };
 
@@ -35,7 +35,11 @@ impl Mapper004 {
 }
 
 impl Mapper for Mapper004 {
-    fn map_cpu_read(&self, address: u16) -> Option<BankMapping> {
+    fn prg_bank_size(&self) -> KbUnit {
+        KbUnit::Eight
+    }
+
+    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
         let bank_order = [
             Bank::Number(self.registers[6]),
             Bank::Number(self.registers[7]),
@@ -47,9 +51,9 @@ impl Mapper for Mapper004 {
                 if self.prg_mode_flip {
                     i = bank_order.len() - i - 1;
                 }
-                Some((8, bank_order[i]))
+                Some(bank_order[i])
             }
-            0xe000..=0xffff => Some((8, Bank::FromLast(0))),
+            0xe000..=0xffff => Some(Bank::FromLast(0)),
             _ => None,
         }
     }
@@ -96,7 +100,11 @@ impl Mapper for Mapper004 {
         }
     }
 
-    fn map_ppu(&self, address: u16) -> BankMapping {
+    fn chr_bank_size(&self) -> KbUnit {
+        KbUnit::One
+    }
+
+    fn map_ppu(&self, address: u16) -> Bank {
         let mut section_0 = [
             Bank::Number(self.registers[0] & !1),
             Bank::Number(self.registers[0] | 1),
@@ -114,8 +122,8 @@ impl Mapper for Mapper004 {
         }
         let i = address as usize / 0x400;
         match address {
-            0x0000..=0x0fff => (1, section_0[i]),
-            0x1000..=0x1fff => (1, section_1[i - 4]),
+            0x0000..=0x0fff => section_0[i],
+            0x1000..=0x1fff => section_1[i - 4],
             _ => unreachable!(),
         }
     }

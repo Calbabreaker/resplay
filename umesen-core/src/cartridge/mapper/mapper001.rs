@@ -1,4 +1,4 @@
-use crate::cartridge::{Bank, BankMapping, Mapper, Mirroring};
+use crate::cartridge::{Bank, KbUnit, Mapper, Mirroring};
 
 // 0b0010_0000
 const SHIFT_CHECK_BIT_POS: u8 = 5;
@@ -37,7 +37,11 @@ impl Mapper001 {
 }
 
 impl Mapper for Mapper001 {
-    fn map_cpu_read(&self, address: u16) -> Option<BankMapping> {
+    fn prg_bank_size(&self) -> KbUnit {
+        KbUnit::SixTeen
+    }
+
+    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
         let (bank_8000, bank_c000) = match self.control_register & 0b01100 {
             // 32 kib mode
             0b00000 | 0b00100 => half_double_bank(self.prg_bank_number),
@@ -49,8 +53,8 @@ impl Mapper for Mapper001 {
         };
 
         Some(match address {
-            0x8000..=0xbfff => (16, bank_8000),
-            0xc000..=0xffff => (16, bank_c000),
+            0x8000..=0xbfff => bank_8000,
+            0xc000..=0xffff => bank_c000,
             _ => return None,
         })
     }
@@ -61,7 +65,11 @@ impl Mapper for Mapper001 {
         }
     }
 
-    fn map_ppu(&self, address: u16) -> BankMapping {
+    fn chr_bank_size(&self) -> KbUnit {
+        KbUnit::Four
+    }
+
+    fn map_ppu(&self, address: u16) -> Bank {
         let (bank_0000, bank_1000) = match self.control_register & 0b10000 {
             // 8 Kib mode
             0b00000 => half_double_bank(self.chr_bank_number_0),
@@ -74,8 +82,8 @@ impl Mapper for Mapper001 {
         };
 
         match address {
-            0x0000..=0x0fff => (4, bank_0000),
-            0x1000..=0x1fff => (4, bank_1000),
+            0x0000..=0x0fff => bank_0000,
+            0x1000..=0x1fff => bank_1000,
             _ => unreachable!(),
         }
     }

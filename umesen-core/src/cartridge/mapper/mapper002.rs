@@ -1,4 +1,4 @@
-use crate::cartridge::{Bank, Mapper};
+use crate::cartridge::{Bank, KbUnit, Mapper};
 
 /// INES designation for UxROM boards
 /// https://www.nesdev.org/wiki/UxROM
@@ -8,10 +8,14 @@ pub struct Mapper002 {
 }
 
 impl Mapper for Mapper002 {
-    fn map_cpu_read(&self, address: u16) -> Option<crate::cartridge::BankMapping> {
+    fn prg_bank_size(&self) -> KbUnit {
+        KbUnit::SixTeen
+    }
+
+    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
         Some(match address {
-            0x8000..=0xbfff => (16, Bank::Number(self.bank_number_low)),
-            0xc000..=0xffff => (16, Bank::FromLast(0)),
+            0x8000..=0xbfff => Bank::Number(self.bank_number_low),
+            0xc000..=0xffff => Bank::FromLast(0),
             _ => return None,
         })
     }
@@ -22,8 +26,12 @@ impl Mapper for Mapper002 {
         }
     }
 
-    fn map_ppu(&self, _: u16) -> super::BankMapping {
-        (8, Bank::Number(0))
+    fn chr_bank_size(&self) -> KbUnit {
+        KbUnit::Eight
+    }
+
+    fn map_ppu(&self, _: u16) -> Bank {
+        Bank::Number(0)
     }
 }
 

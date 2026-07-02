@@ -1,4 +1,4 @@
-use crate::cartridge::{Bank, BankMapping, Mapper};
+use crate::cartridge::{Bank, KbUnit, Mapper};
 
 /// INES designation for CNROM boards
 /// https://www.nesdev.org/wiki/CNROM
@@ -8,9 +8,13 @@ pub struct Mapper003 {
 }
 
 impl Mapper for Mapper003 {
-    fn map_cpu_read(&self, address: u16) -> Option<BankMapping> {
+    fn prg_bank_size(&self) -> KbUnit {
+        KbUnit::ThirtyTwo
+    }
+
+    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
         Some(match address {
-            0x8000..=0xffff => (32, Bank::Number(0)),
+            0x8000..=0xffff => Bank::Number(0),
             _ => return None,
         })
     }
@@ -21,8 +25,12 @@ impl Mapper for Mapper003 {
         }
     }
 
-    fn map_ppu(&self, _: u16) -> BankMapping {
-        (8, Bank::Number(self.bank_number))
+    fn chr_bank_size(&self) -> KbUnit {
+        KbUnit::Eight
+    }
+
+    fn map_ppu(&self, _: u16) -> Bank {
+        Bank::Number(self.bank_number)
     }
 }
 
