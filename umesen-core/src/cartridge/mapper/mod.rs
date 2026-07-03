@@ -1,16 +1,11 @@
 use crate::cartridge::{Bank, KbUnit, Mirroring};
 
-use mapper000::Mapper000;
-use mapper001::Mapper001;
-use mapper002::Mapper002;
-use mapper003::Mapper003;
-use mapper004::Mapper004;
-
 mod mapper000;
 mod mapper001;
 mod mapper002;
 mod mapper003;
 mod mapper004;
+mod mapper007;
 
 /// Generic trait for underlying circuitry inside a catridge that will read and write to a catridge memory bank
 pub trait Mapper: std::fmt::Debug {
@@ -37,28 +32,31 @@ pub trait Mapper: std::fmt::Debug {
 
 pub fn create_mapper(id: u16) -> Option<Box<dyn Mapper>> {
     Some(match id {
-        0 => Box::new(Mapper000::default()),
-        1 => Box::new(Mapper001::default()),
-        2 => Box::new(Mapper002::default()),
-        3 => Box::new(Mapper003::default()),
-        4 => Box::new(Mapper004::default()),
+        0 => Box::new(mapper000::Mapper000::default()),
+        1 => Box::new(mapper001::Mapper001::default()),
+        2 => Box::new(mapper002::Mapper002::default()),
+        3 => Box::new(mapper003::Mapper003::default()),
+        4 => Box::new(mapper004::Mapper004::default()),
+        7 => Box::new(mapper007::Mapper007::default()),
         _ => return None,
     })
 }
 
 #[cfg(test)]
 mod test {
-    use crate::{Cartridge, cartridge::CartridgeHeader};
+    use crate::{
+        Cartridge,
+        cartridge::{CartridgeHeader, create_mapper},
+    };
 
     pub fn create_test_catridge(
         mapper_id: u16,
-        prg_rom_bank_size: usize,
         prg_rom_banks_values: &[&[u8]],
-        chr_rom_bank_size: usize,
         chr_rom_banks_values: &[&[u8]],
     ) -> Cartridge {
-        let prg_rom = create_banks_rom(prg_rom_bank_size, prg_rom_banks_values);
-        let chr_rom = create_banks_rom(chr_rom_bank_size, chr_rom_banks_values);
+        let mapper = create_mapper(mapper_id).unwrap();
+        let prg_rom = create_banks_rom(mapper.prg_bank_size() as usize, prg_rom_banks_values);
+        let chr_rom = create_banks_rom(mapper.chr_bank_size() as usize, chr_rom_banks_values);
         let header = CartridgeHeader {
             mapper_id,
             chr_mem_is_rom: true,

@@ -127,7 +127,7 @@ mod test {
     }
 
     fn setup_catridge() -> Cartridge {
-        create_test_catridge(1, 16, &[&[1, 69], &[2], &[3], &[4]], 4, &[&[6], &[7], &[8]])
+        create_test_catridge(1, &[&[1, 69], &[2], &[3], &[4]], &[&[6], &[7], &[8]])
     }
 
     #[test]

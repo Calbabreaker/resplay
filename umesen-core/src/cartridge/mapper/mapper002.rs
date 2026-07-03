@@ -41,7 +41,7 @@ mod test {
 
     #[test]
     fn test() {
-        let mut cartridge = create_test_catridge(2, 16, &[&[1], &[2], &[3]], 8, &[&[2]]);
+        let mut cartridge = create_test_catridge(2, &[&[1], &[2], &[3]], &[&[2]]);
         assert_eq!(cartridge.ppu_read(0x0000), Some(2));
 
         assert_eq!(cartridge.cpu_read(0x8000), Some(1));

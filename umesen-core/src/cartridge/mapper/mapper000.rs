@@ -35,14 +35,14 @@ mod test {
 
     #[test]
     fn prg_ram() {
-        let mut cartridge = create_test_catridge(0, 16, &[], 8, &[]);
+        let mut cartridge = create_test_catridge(0, &[], &[]);
         cartridge.cpu_write(0x6000, 2);
         assert_eq!(cartridge.cpu_read(0x6000), Some(2));
     }
 
     #[test]
     fn test() {
-        let mut cartridge = create_test_catridge(0, 16, &[&[1, 2, 3]], 8, &[&[69]]);
+        let mut cartridge = create_test_catridge(0, &[&[1, 2, 3]], &[&[69]]);
         assert_eq!(cartridge.cpu_read(0x8000), Some(1));
         assert_eq!(cartridge.cpu_read(0x8002), Some(3));
         assert_eq!(cartridge.cpu_read(0xc002), Some(3));
