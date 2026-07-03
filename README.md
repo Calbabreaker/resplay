@@ -2,7 +2,7 @@
 
 Cool NES emulator with some debugging tools.
 
-![2025-02-09_02-57](https://github.com/user-attachments/assets/8ce43080-b813-4485-9bc8-7937d65a70b9)
+<img width="1917" height="1040" alt="Screenshot_20260704_043133" src="https://github.com/user-attachments/assets/a61c2333-cc73-4c4f-a89e-b86f504e0e9a" />
 
 ## Running
 
