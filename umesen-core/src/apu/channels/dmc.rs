@@ -40,9 +40,6 @@ impl DmcChannel {
     }
 
     pub fn clock(&mut self) {
-        if self.bits_remaining == 0 && self.bytes_remaining != 0 && self.enabled {
-            self.require_dma_at = Some(self.current_address);
-        }
         if self.timer.clock() && self.bits_remaining != 0 {
             if self.shift_register & 1 == 1 {
                 if self.output_level <= 125 {
@@ -55,6 +52,10 @@ impl DmcChannel {
             }
             self.shift_register >>= 1;
             self.bits_remaining -= 1;
+        }
+
+        if self.bits_remaining == 0 && self.bytes_remaining != 0 && self.enabled {
+            self.require_dma_at = Some(self.current_address);
         }
     }
 

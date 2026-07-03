@@ -21,7 +21,7 @@ impl Attributes {
 pub struct Sprite {
     pub x: u8,
     pub y: u8,
-    pub tile_number: u8,
+    tile_number: u8,
     pub attributes: Attributes,
     /// OAM index to check sprite 0 hit
     pub oam_index: u8,

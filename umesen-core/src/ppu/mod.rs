@@ -15,7 +15,6 @@ pub use vram::VramRegister;
 pub const WIDTH: usize = 256;
 pub const HEIGHT: usize = 240;
 pub const MAX_SPRITES_PER_SCAN: usize = 8;
-pub const TILE_SIZE: usize = 8;
 pub const PRERENDER_SCANLINE: usize = 261;
 
 pub type ScreenPixels = FixedArray<FixedArray<u8, 3>, { WIDTH * HEIGHT }>;
@@ -137,25 +136,22 @@ impl Ppu {
         match self.registers.dot {
             // When at visible dots, shift registers and load bits
             // Last 16 dots load the shift register with the next tiles on the next scanline
-            1..=256 | 328..=336 => {
+            1..=255 | 328..=336 => {
                 self.shift_registers();
                 if (self.registers.dot - 1).is_multiple_of(8) {
                     self.load_background_shift_bits();
                 }
             }
             // Scroll y and reset x when end of visible scanline
-            // Scroll y technically meant to happen previous dot but should work still
-            257 => {
-                self.registers.v.scroll_fine_y();
-                self.registers.v.set_x(&self.registers.t);
-            }
+            256 => self.registers.v.scroll_fine_y(),
+            257 => self.registers.v.copy_x(self.registers.t),
             _ => (),
         }
     }
 
     fn clock_bg_prerender_line(&mut self) {
         match self.registers.dot {
-            280..=304 => self.registers.v.set_y(&self.registers.t),
+            280..=304 => self.registers.v.copy_y(self.registers.t),
             // Skip last cycle on odd frames
             339 if self.registers.frame_count % 2 == 1 => self.registers.dot += 1,
             // Prerender line does same stuff as render line but with extra stuff
@@ -329,6 +325,6 @@ pub fn get_pattern_tile_addresses(tile_number: u16, fine_y: u16) -> (u16, u16) {
     // ||++++-++++----- N: Tile number from name table
     // |+-------------- H: Half of pattern table (0: "left"; 1: "right")
     // +--------------- 0: Pattern table is at $0000-$1FFF
-    let address = ((tile_number) << 4) | (fine_y % TILE_SIZE as u16);
-    ((address), (address + TILE_SIZE as u16))
+    let address = ((tile_number) << 4) | (fine_y % TILE_SIZE);
+    ((address), (address + TILE_SIZE))
 }

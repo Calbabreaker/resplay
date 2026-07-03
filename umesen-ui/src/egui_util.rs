@@ -44,6 +44,7 @@ pub fn get_shortcut_text(shortcut: &egui::KeyboardShortcut) -> String {
     shortcut.format(&egui::ModifierNames::NAMES, cfg!(target_os = "macos"))
 }
 
+/// Show a list of flags as modifiable checkboxes based on the flag names
 pub fn show_flags<T: bitflags::Flags + Copy>(ui: &mut egui::Ui, value: &mut T) {
     egui::Grid::new(std::any::TypeId::of::<T>()).show(ui, |ui| {
         for (i, flag) in T::FLAGS.iter().filter(|f| f.is_named()).enumerate() {
@@ -58,6 +59,8 @@ pub fn show_flags<T: bitflags::Flags + Copy>(ui: &mut egui::Ui, value: &mut T) {
     });
 }
 
+/// Draw a rect with a color clipping the rect with clip rect and drawing the clipped part wrapped
+/// to the start of the clip rect if the rect is larger than the the clip rect
 pub fn draw_rect_wrapped(
     ui: &egui::Ui,
     rect: egui::Rect,

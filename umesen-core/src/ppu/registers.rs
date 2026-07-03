@@ -1,8 +1,9 @@
 use crate::{
     cartridge::FixedArray,
     ppu::{
-        HEIGHT, PALETTE_START, PATTERN_TILE_COUNT, PRERENDER_SCANLINE, Sprite, VramRegister, WIDTH,
-        bus::PpuBus, sprite::Attributes,
+        HEIGHT, NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, PALETTE_START, PATTERN_TILE_COUNT,
+        PRERENDER_SCANLINE, Sprite, TILE_SIZE, VramRegister, WIDTH, bus::PpuBus,
+        sprite::Attributes,
     },
 };
 
@@ -161,6 +162,18 @@ impl Registers {
         value
     }
 
+    /// Get the total scroll pos in pixels
+    pub fn scroll_pos_pixels(&self) -> (u16, u16) {
+        let tile_x = self.t.get(VramRegister::COARSE_X)
+            + self.t.get(VramRegister::NAMETABLE_X) * NAMETABLE_SIZE_X;
+        let tile_y = self.t.get(VramRegister::COARSE_Y)
+            + self.t.get(VramRegister::NAMETABLE_Y) * NAMETABLE_SIZE_Y;
+        (
+            tile_x * TILE_SIZE + self.fine_x as u16,
+            tile_y * TILE_SIZE + self.t.get(VramRegister::FINE_Y),
+        )
+    }
+
     pub(crate) fn on_visble_dot(&self) -> bool {
         self.dot >= 1 && (self.dot - 1 < WIDTH)
     }
@@ -266,7 +279,7 @@ impl Registers {
         // Weird increment behaviour when ppu is rendering
         if self.on_visble_dot() && self.scanline < HEIGHT && self.mask.rendering() {
             self.v.scroll_fine_y();
-            self.v.scroll_coarse_x();
+            self.v.set_coarse_x(self.v.get(VramRegister::COARSE_X) + 1);
         }
     }
 }

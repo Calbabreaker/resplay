@@ -1,3 +1,5 @@
+use crate::ppu::{NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, TILE_SIZE};
+
 /// Internal 15-bit registers (t and v) used for rendering and memory access
 /// These can act as a 15-bit address to access the ppu bus or a packed bitfield
 /// From nesdev wiki: https://www.nesdev.org/wiki/PPU_scrolling
@@ -27,14 +29,22 @@ impl VramRegister {
         let value = value.into();
         // Check value fits into the bits
         debug_assert!(value <= (select_bits >> select_bits.trailing_zeros()));
-
         let value_shifted = value << select_bits.trailing_zeros();
         self.0 = value_shifted | (self.0 & (!select_bits));
     }
 
     pub fn get(&self, select_bits: u16) -> u16 {
-        let value = self.0 & select_bits;
-        value >> select_bits.trailing_zeros()
+        (self.0 & select_bits) >> select_bits.trailing_zeros()
+    }
+
+    pub fn copy_x(&mut self, other: VramRegister) {
+        let select_bits = Self::COARSE_X | Self::NAMETABLE_X;
+        self.set(select_bits, other.get(select_bits));
+    }
+
+    pub fn copy_y(&mut self, other: VramRegister) {
+        let select_bits = Self::FINE_Y | Self::COARSE_Y | Self::NAMETABLE_Y;
+        self.set(select_bits, other.get(select_bits));
     }
 
     /// Returns the address within the nametable portion of the ppu of which this register contains
@@ -64,53 +74,32 @@ impl VramRegister {
         (attribute >> shift) & 0b11
     }
 
-    pub fn scroll_coarse_x(&mut self) {
-        if self.scroll_wrap(Self::COARSE_X, 31) {
-            // Flip nametable x bit to wrap around
+    pub fn set_coarse_x(&mut self, coarse_x: u16) {
+        if self.set_wrapped(coarse_x, Self::COARSE_X, NAMETABLE_SIZE_X) {
             self.0 ^= Self::NAMETABLE_X;
         }
     }
 
-    pub fn scroll_fine_y(&mut self) {
-        if self.scroll_wrap(Self::FINE_Y, 7) && self.scroll_wrap(Self::COARSE_Y, 29) {
-            // Scroll coarse y wrapping at 30 since bottom is taken by attribute data
+    pub fn set_coarse_y(&mut self, coarse_y: u16) {
+        if self.set_wrapped(coarse_y, Self::COARSE_Y, NAMETABLE_SIZE_Y) {
             self.0 ^= Self::NAMETABLE_Y;
         }
     }
 
-    pub fn set_x(&mut self, other: &VramRegister) {
-        let bits = VramRegister::COARSE_X | VramRegister::NAMETABLE_X;
-        self.set(bits, other.get(bits));
+    pub fn scroll_coarse_x(&mut self) {
+        self.set_coarse_x(self.get(Self::COARSE_X) + 1);
     }
 
-    pub fn set_y(&mut self, other: &VramRegister) {
-        let bits = VramRegister::COARSE_Y | VramRegister::NAMETABLE_Y | VramRegister::FINE_Y;
-        self.set(bits, other.get(bits));
-    }
-
-    // Increment a value, wrapping at wrap and returning true
-    fn scroll_wrap(&mut self, select_bits: u16, wrap: u16) -> bool {
-        let value = self.get(select_bits);
-        if value >= wrap {
-            self.set(select_bits, 0u8);
-            true
-        } else {
-            self.set(select_bits, value + 1);
-            false
+    pub fn scroll_fine_y(&mut self) {
+        if self.set_wrapped(self.get(Self::FINE_Y) + 1, Self::FINE_Y, TILE_SIZE) {
+            self.set_coarse_y(self.get(Self::COARSE_Y) + 1);
         }
     }
-}
 
-impl std::fmt::Display for VramRegister {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "CX: {}, CY: {}, N: {}, FY: {}",
-            self.get(VramRegister::COARSE_X),
-            self.get(VramRegister::COARSE_Y),
-            self.get(VramRegister::NAMETABLE),
-            self.get(VramRegister::FINE_Y)
-        )
+    fn set_wrapped(&mut self, value: u16, select_bits: u16, size: u16) -> bool {
+        debug_assert!(value <= (size * 2));
+        self.set(select_bits, value % size);
+        value >= size
     }
 }
 
