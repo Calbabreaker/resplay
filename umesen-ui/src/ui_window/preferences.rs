@@ -6,6 +6,7 @@ enum Tab {
     KeyBinds,
     Misc,
     Audio,
+    Video,
 }
 
 impl crate::egui_util::UiList for Tab {
@@ -14,10 +15,11 @@ impl crate::egui_util::UiList for Tab {
             Self::KeyBinds => "Key binds",
             Self::Misc => "Misc",
             Self::Audio => "Audio",
+            Tab::Video => "Video",
         }
     }
 
-    const LIST: &[Self] = &[Self::KeyBinds, Self::Audio, Self::Misc];
+    const LIST: &[Self] = &[Self::KeyBinds, Self::Audio, Self::Video, Self::Misc];
 }
 
 pub fn show(ui: &mut egui::Ui, prefs: &mut Preferences) {
@@ -26,11 +28,10 @@ pub fn show(ui: &mut egui::Ui, prefs: &mut Preferences) {
     match tab_open {
         Tab::Misc => {
             egui::Grid::new("misc prefs").striped(true).show(ui, |ui| {
-                ui.label("Allow illegal press ").on_hover_text("Allow left and right or up and down to be pressed at the same time");
+                ui.label("Allow illegal press ").on_hover_text(
+                    "Allow left and right or up and down to be pressed at the same time",
+                );
                 ui.checkbox(&mut prefs.allow_illegal_press, "");
-                ui.end_row();
-                ui.label("Allow unlimited sprites").on_hover_text("Allow unlimited sprites to be rendered on the same scanline at a time instead of the usual 8");
-                ui.checkbox(&mut prefs.ppu.unlimited_sprites, "");
                 ui.end_row();
             });
         }
@@ -53,6 +54,22 @@ pub fn show(ui: &mut egui::Ui, prefs: &mut Preferences) {
                 ui.end_row();
                 ui.label("DMC volume");
                 ui.add(egui::Slider::new(&mut prefs.apu.dmc_volume, (0.)..=1.));
+                ui.end_row();
+            });
+        }
+        Tab::Video => {
+            egui::Grid::new("video prefs").striped(true).show(ui, |ui| {
+                ui.label("Allow unlimited sprites").on_hover_text("Allow unlimited sprites to be rendered on the same scanline at a time instead of the usual 8");
+                ui.checkbox(&mut prefs.ppu.unlimited_sprites, "");
+                ui.end_row();
+                ui.label("Hide sprite");
+                ui.checkbox(&mut prefs.ppu.hide_sprite, "");
+                ui.end_row();
+                ui.label("Hide background");
+                ui.checkbox(&mut prefs.ppu.hide_background, "");
+                ui.end_row();
+                ui.label("Force grayscale mode");
+                ui.checkbox(&mut prefs.ppu.force_grayscale, "");
                 ui.end_row();
             });
         }

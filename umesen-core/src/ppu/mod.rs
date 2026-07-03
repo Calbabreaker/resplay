@@ -28,6 +28,9 @@ pub enum PpuClockReport {
 #[serde(default)]
 pub struct PpuConfig {
     pub unlimited_sprites: bool,
+    pub hide_sprite: bool,
+    pub hide_background: bool,
+    pub force_grayscale: bool,
 }
 
 /// Emulated 2C02 NTSC PPU
@@ -116,6 +119,10 @@ impl Ppu {
     }
 
     fn render_pixel(&mut self) {
+        let mut force_mask = Mask::default();
+        force_mask.set(Mask::GRAYSCALE, self.config.force_grayscale);
+        self.registers.mask |= force_mask;
+
         let x = self.registers.dot - 1;
         let color_index = if self.registers.mask.rendering() {
             let bg_color_index = self.render_bg_pixel(x);
@@ -251,7 +258,6 @@ impl Ppu {
             (self.bg_shift_bits_high >> 8) as u8,
             bit_mask,
         );
-
         if color_index != 0 {
             // Add palette offset if not transparent
             let palette_id = add_bit_planes(
@@ -261,38 +267,39 @@ impl Ppu {
             );
             color_index += 4 * palette_id
         }
-
         color_index
     }
 
     /// Returns the palette ram index for the current pixel if a sprite is there or the background based on piority
     fn render_fg_pixel(&mut self, scan_x: usize, bg_color_index: u8) -> u8 {
-        if !self.registers.mask.can_show_sprite(scan_x) {
-            return bg_color_index;
-        }
+        if self.registers.mask.can_show_sprite(scan_x) {
+            for sprite in self.sprite_buffer.iter() {
+                let color_index = sprite.color_index(scan_x);
+                if color_index == 0 {
+                    continue;
+                }
 
-        for sprite in self.sprite_buffer.iter() {
-            let color_index = sprite.color_index(scan_x);
-            if color_index == 0 {
-                continue;
-            }
+                // Check if sprite 0 is rendering and set status flag
+                if sprite.oam_index == 0 && bg_color_index != 0 && scan_x != 255 {
+                    self.registers.status.insert(Status::SPRITE_0_HIT);
+                }
 
-            // Check if sprite 0 is rendering and set status flag
-            if sprite.oam_index == 0 && bg_color_index != 0 && scan_x != 255 {
-                self.registers.status.insert(Status::SPRITE_0_HIT);
-            }
-
-            let palette_id = sprite.attributes.palette() + 4;
-            let behind_bg = sprite.attributes.contains(Attributes::RENDER_BEHIND);
-            if behind_bg && bg_color_index != 0 {
-                // Sprite still gets drawn on top of later sprites but it uses background
-                return bg_color_index;
-            } else {
-                return color_index + palette_id * 4;
+                let palette_id = sprite.attributes.palette() + 4;
+                let behind_bg = sprite.attributes.contains(Attributes::RENDER_BEHIND);
+                if behind_bg && bg_color_index != 0 || self.config.hide_sprite {
+                    // Sprite still gets drawn on top of later sprites but it uses background
+                    break;
+                } else {
+                    return color_index + palette_id * 4;
+                }
             }
         }
 
-        bg_color_index
+        if self.config.hide_background {
+            0
+        } else {
+            bg_color_index
+        }
     }
 
     fn shift_registers(&mut self) {
