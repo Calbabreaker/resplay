@@ -19,7 +19,6 @@ pub trait Mapper: std::fmt::Debug {
     fn map_ppu(&self, address: u16) -> Bank;
     fn monitor_ppu(&mut self, _address: u16) {}
 
-    fn reset(&mut self) {}
     /// Used to send irq to cpu
     fn irq_status(&self) -> bool {
         false

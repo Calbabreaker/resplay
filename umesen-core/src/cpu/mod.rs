@@ -83,22 +83,14 @@ impl Cpu {
     }
 
     pub fn reset(&mut self) {
-        self.a = 0;
-        self.x = 0;
-        self.y = 0;
-        self.flags = Flags::default() | Flags::INTERRUPT;
-
         self.bus.cpu_cycles_total = 0;
         self.bus.cpu_cycles_since_inst = 0;
-        self.pc = self.bus.read_u16(RESET_LOAD_VECTOR);
-        self.sp = 0xfd;
-        // Some roms freeze when soft loading if nmi is enabled for some reason
-        self.bus.ppu.registers.control = Default::default();
         self.bus.apu.reset();
-        if let Some(cart) = self.bus.cartridge_mut() {
-            cart.reset();
-        }
+        self.bus.ppu.registers.reset();
 
+        self.flags = Flags::default() | Flags::INTERRUPT;
+        self.pc = self.bus.read_u16(RESET_LOAD_VECTOR);
+        self.sp = self.sp.wrapping_sub(3);
         for _ in 0..5 {
             self.bus.clock();
         }

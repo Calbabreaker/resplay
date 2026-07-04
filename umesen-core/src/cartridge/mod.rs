@@ -19,9 +19,9 @@ impl Cartridge {
         prg_rom: Vec<u8>,
         chr_mem: Vec<u8>,
     ) -> Result<Self, NesParseError> {
-        let mut mapper = create_mapper(header.mapper_id)
+        let mapper = create_mapper(header.mapper_id)
             .ok_or(NesParseError::UnsupportedMapper(header.mapper_id))?;
-        mapper.reset();
+        // mapper.reset();
         Ok(Cartridge {
             banks: CartridgeBanks::new(prg_ram, prg_rom, chr_mem, mapper.as_ref()),
             mapper,
@@ -109,9 +109,5 @@ impl Cartridge {
 
     pub fn debug_mapper(&self) -> String {
         format!("{:?}", self.mapper)
-    }
-
-    pub fn reset(&mut self) {
-        self.mapper.reset();
     }
 }

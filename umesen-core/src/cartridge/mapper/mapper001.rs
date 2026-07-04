@@ -1,11 +1,11 @@
 use crate::cartridge::{Bank, KbUnit, Mapper, Mirroring};
 
-// 0b0010_0000
+/// Shift bit to 0b0010_0000
 const SHIFT_CHECK_BIT_POS: u8 = 5;
 
 /// INES designation for MMC1 boards
 /// https://www.nesdev.org/wiki/MMC1
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Mapper001 {
     shift_register: u8,
     control_register: u8,
@@ -17,8 +17,12 @@ pub struct Mapper001 {
 impl Mapper001 {
     fn write_load_register(&mut self, address: u16, value: u8) {
         if value & 0b1000_0000 != 0 {
-            self.reset();
+            // Keep a one there so we can just check bit 0 to check if it has been shifted 5 times
+            self.shift_register = 1 << SHIFT_CHECK_BIT_POS;
+            // Swith to bank mode 3
+            self.control_register |= 0b01100;
         } else {
+            // Shift the new bit just before the old bit
             self.shift_register >>= 1;
             self.shift_register |= (value & 0b1) << SHIFT_CHECK_BIT_POS;
             if self.shift_register & 0b1 != 0 {
@@ -86,13 +90,6 @@ impl Mapper for Mapper001 {
             0x1000..=0x1fff => bank_1000,
             _ => unreachable!(),
         }
-    }
-
-    fn reset(&mut self) {
-        // Keep a one there so we can just check bit 5 to see if register written 5 times
-        self.shift_register = 1 << SHIFT_CHECK_BIT_POS;
-        // Switch to bank mode 3
-        self.control_register |= 0b01100;
     }
 
     fn mirroring(&self) -> Option<Mirroring> {

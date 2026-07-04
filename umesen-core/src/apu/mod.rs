@@ -59,7 +59,7 @@ pub struct Apu {
 }
 
 impl Apu {
-    pub fn write(&mut self, address: u16, value: u8) {
+    pub(crate) fn write(&mut self, address: u16, value: u8) {
         std::debug_assert_matches!(address, 0x4000..=0x4017);
         match address {
             0x4000..=0x4013 => self.channels.write(address, value),
@@ -72,14 +72,14 @@ impl Apu {
         }
     }
 
-    pub fn read_status(&mut self) -> u8 {
+    pub(crate) fn read_status(&mut self) -> u8 {
         let mut status = self.channels.get_status();
         status.set(Status::FRAME_IRQ, self.frame_counter.irq.read_status());
         status.bits()
     }
 
     /// Ran on every CPU cycle
-    pub fn clock(&mut self, cpu_cycles: u64) {
+    pub(crate) fn clock(&mut self, cpu_cycles: u64) {
         self.channels.clock(cpu_cycles);
 
         let state = self.frame_counter.clock();
@@ -98,11 +98,11 @@ impl Apu {
         }
     }
 
-    pub fn irq_status(&self) -> bool {
+    pub(crate) fn irq_status(&self) -> bool {
         self.frame_counter.irq.status | self.channels.dmc.irq.status
     }
 
-    pub fn reset(&mut self) {
+    pub(crate) fn reset(&mut self) {
         self.channels.set_enabled(Status::empty());
     }
 }

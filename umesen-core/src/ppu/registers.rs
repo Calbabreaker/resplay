@@ -141,6 +141,16 @@ impl Registers {
         }
     }
 
+    pub(crate) fn reset(&mut self) {
+        // Specified by https://www.nesdev.org/wiki/PPU_power_up_state
+        self.write_control(0);
+        self.write_scroll(0);
+        self.mask = Mask::default();
+        self.latch = false;
+        self.read_buffer = 0;
+        self.frame_count = 0;
+    }
+
     /// Get the sprite at the oam index with an individual byte offset
     pub fn get_oam_sprite(&self, index: usize, offset: usize) -> Option<Sprite> {
         let i = index * 4 + offset;

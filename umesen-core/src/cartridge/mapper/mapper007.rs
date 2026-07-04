@@ -4,7 +4,8 @@ use crate::cartridge::{Bank, KbUnit, Mapper, Mirroring};
 /// https://www.nesdev.org/wiki/AxROM
 #[derive(Default, Debug)]
 pub struct Mapper007 {
-    bank_select: u8,
+    bank_number: u8,
+    mirroring: Mirroring,
 }
 
 impl Mapper for Mapper007 {
@@ -14,23 +15,24 @@ impl Mapper for Mapper007 {
 
     fn map_cpu_read(&self, address: u16) -> Option<Bank> {
         Some(match address {
-            0x8000..=0xffff => Bank::Number(self.bank_select & 0b111),
+            0x8000..=0xffff => Bank::Number(self.bank_number),
             _ => return None,
         })
     }
 
     fn cpu_write(&mut self, address: u16, value: u8) {
         if let 0x8000..=0xffff = address {
-            self.bank_select = value;
+            self.bank_number = value & 0b0000_0111;
+            self.mirroring = if value & 0b0001_0000 == 0 {
+                Mirroring::SingleScreenLow
+            } else {
+                Mirroring::SingleScreenHigh
+            };
         }
     }
 
     fn mirroring(&self) -> Option<Mirroring> {
-        if self.bank_select & 0b0001_0000 != 0 {
-            Some(Mirroring::SingleScreenHigh)
-        } else {
-            Some(Mirroring::SingleScreenLow)
-        }
+        Some(self.mirroring)
     }
 
     fn chr_bank_size(&self) -> KbUnit {
