@@ -1,6 +1,10 @@
 use std::collections::HashSet;
 
-use crate::{Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, ui_window::UiWindowKind};
+use cpal::traits::StreamTrait;
+
+use crate::{
+    Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, NesRomSource, State, ui_window::UiWindowKind,
+};
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
@@ -11,12 +15,29 @@ pub struct Preferences {
     pub apu: resplay_core::apu::ApuConfig,
 }
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
     preferences: Preferences,
     state: crate::State,
+
+    #[serde(skip)]
+    file_picker_channel: (
+        std::sync::mpsc::Sender<NesRomSource>,
+        std::sync::mpsc::Receiver<NesRomSource>,
+    ),
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            ui_windows: HashSet::default(),
+            preferences: Preferences::default(),
+            state: State::default(),
+            file_picker_channel: std::sync::mpsc::channel(),
+        }
+    }
 }
 
 impl App {
@@ -26,29 +47,49 @@ impl App {
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
+        app.state.load_nes_rom(NesRomSource::MostRecent);
+        #[cfg(not(target_arch = "wasm32"))]
         app.state.setup_audio_stream();
-        app.state.load_nes_rom(None);
         app
+    }
+
+    fn show_file_dialog(&mut self) {
+        let dialog = rfd::AsyncFileDialog::new()
+            .add_filter("NES ROM", &["nes"])
+            .pick_file();
+        let sender = self.file_picker_channel.0.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || {
+            if let Some(file) = pollster::block_on(dialog) {
+                let source = NesRomSource::Path(file.path().to_path_buf());
+                sender.send(source).unwrap();
+            }
+        });
+
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(async move {
+            if let Some(file) = dialog.await {
+                let bytes = NesRomSource::Bytes(file.read().await);
+                sender.send(bytes).unwrap();
+            }
+        });
     }
 
     fn show_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             if ui.button("Open ROM...").clicked() {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("NES ROM", &["nes"])
-                    .pick_file()
-                {
-                    self.state.load_nes_rom(Some(path));
-                }
+                self.show_file_dialog();
                 ui.close();
             }
 
+            #[cfg(not(target_arch = "wasm32"))]
             ui.menu_button("Recent ROMS", |ui| {
                 let mut paths = self.state.recent_file_paths.iter();
                 let path = paths.find(|path| ui.button(path.to_string_lossy()).clicked());
 
                 if let Some(path) = path {
-                    self.state.load_nes_rom(Some(path.to_path_buf()));
+                    self.state.load_nes_rom(NesRomSource::Path(path.clone()));
                     ui.close();
                 }
             });
@@ -134,10 +175,20 @@ impl App {
 
         self.preferences.key_bindings.check_key_down(i);
 
-        if let Some(path) = i.raw.dropped_files.pop().and_then(|f| f.path) {
-            self.state.load_nes_rom(Some(path));
+        if let Some(file) = i.raw.dropped_files.pop() {
+            if let Some(path) = file.path {
+                self.state.load_nes_rom(NesRomSource::Path(path));
+            } else if let Some(bytes) = file.bytes {
+                self.state.load_nes_rom(NesRomSource::Bytes(bytes.to_vec()));
+            }
         }
         i.raw.dropped_files.clear();
+
+        // Only create the audio stream after an interaction to make sure it plays
+        #[cfg(target_arch = "wasm32")]
+        if i.pointer.any_click() && self.state.audio_stream.is_none() {
+            self.state.setup_audio_stream();
+        }
     }
 }
 
@@ -148,6 +199,9 @@ impl eframe::App for App {
 
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         ctx.input_mut(|i| self.check_input(i));
+        if let Ok(source) = self.file_picker_channel.1.try_recv() {
+            self.state.load_nes_rom(source);
+        }
 
         self.state.emu.ppu().config = self.preferences.ppu.clone();
         self.state.emu.apu().config = self.preferences.apu.clone();
@@ -166,7 +220,6 @@ impl eframe::App for App {
 
         self.ui_windows
             .retain(|kind| kind.show(ui, &mut self.state, &mut self.preferences));
-        self.state.popup_modal.show(ui);
 
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE)

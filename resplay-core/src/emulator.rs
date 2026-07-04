@@ -13,8 +13,8 @@ pub struct Emulator {
     pub speed: f32,
     pub running: bool,
     clocks_remaining: f32,
-    last_update_time: std::time::Instant,
-    last_frame_time: std::time::Instant,
+    last_update_time: f32,
+    last_frame_time: f32,
     frame_rate: f32,
     audio_sample_rate: f32,
 }
@@ -22,10 +22,10 @@ pub struct Emulator {
 impl Default for Emulator {
     fn default() -> Self {
         Self {
-            last_update_time: std::time::Instant::now(),
+            last_update_time: 0.,
             running: true,
             cpu: Cpu::default(),
-            last_frame_time: std::time::Instant::now(),
+            last_frame_time: 0.,
             audio_sample_rate: 0.,
             frame_rate: 0.,
             clocks_remaining: 0.,
@@ -47,11 +47,12 @@ impl Emulator {
     /// required for that amount of time
     pub fn update(
         &mut self,
+        now_secs: f32,
         mut on_frame_completed: impl FnMut(&ScreenPixels),
     ) -> Result<(), CpuError> {
-        let delta = self.last_update_time.elapsed().as_secs_f32().min(0.05) * self.speed;
+        let delta = (now_secs - self.last_update_time).min(0.05) * self.speed;
         self.apu().sample_rate = self.audio_sample_rate / self.speed;
-        self.last_update_time = std::time::Instant::now();
+        self.last_update_time = now_secs;
         if !self.running {
             self.clocks_remaining = 0.;
             return Ok(());
@@ -61,8 +62,8 @@ impl Emulator {
         while self.clocks_remaining > 0. {
             self.clocks_remaining -= self.cpu.execute_next()? as f32;
             if self.ppu().frame_complete() && self.clocks_remaining < CYCLES_PER_FRAME {
-                self.frame_rate = 1. / self.last_frame_time.elapsed().as_secs_f32();
-                self.last_frame_time = std::time::Instant::now();
+                self.frame_rate = 1. / (now_secs - self.last_frame_time);
+                self.last_frame_time = now_secs;
                 on_frame_completed(&self.ppu().screen_pixels);
             }
         }
@@ -93,9 +94,8 @@ impl Emulator {
     }
 
     pub fn load_nes_rom(&mut self, bytes: impl std::io::Read) -> Result<(), NesParseError> {
-        self.cpu.bus.attach_catridge(Cartridge::from_nes(bytes)?);
+        self.ppu().registers.bus.cartridge = Some(Cartridge::from_nes(bytes)?);
         self.cpu.reset();
-        self.last_update_time = std::time::Instant::now();
         Ok(())
     }
 

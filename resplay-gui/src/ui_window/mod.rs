@@ -55,31 +55,3 @@ impl UiWindowKind {
         open
     }
 }
-
-#[derive(Default)]
-pub struct PopupModal {
-    heading: String,
-    text: egui::RichText,
-    open: bool,
-}
-
-impl PopupModal {
-    pub fn error(&mut self, heading: impl Into<String>, message: impl Into<String>) {
-        self.heading = heading.into();
-        self.text = egui::RichText::new(message).color(egui::Color32::LIGHT_RED);
-        self.open = true;
-    }
-
-    pub fn show(&mut self, ctx: &egui::Context) {
-        if self.open {
-            let modal = egui::Modal::new("Popup".into()).show(ctx, |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.heading(&self.heading);
-                    ui.add_space(10.);
-                    ui.label(self.text.clone());
-                })
-            });
-            self.open = !modal.should_close();
-        }
-    }
-}

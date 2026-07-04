@@ -52,9 +52,9 @@ pub static DEFAULT_ACTION_MAP: LazyLock<KeyActionMap> = LazyLock::new(|| {
     use Hotkey::*;
     use egui::Key::*;
     let mapping = [
-        (Action::Hotkey(PauseResume), F4),
-        (Action::Hotkey(SoftReset), F5),
-        (Action::Hotkey(HardReset), F6),
+        (Action::Hotkey(PauseResume), F1),
+        (Action::Hotkey(SoftReset), F2),
+        (Action::Hotkey(HardReset), F3),
         (Action::Hotkey(Step), OpenBracket),
         (Action::Hotkey(QuickSave), W),
         (Action::Hotkey(QuickLoad), O),

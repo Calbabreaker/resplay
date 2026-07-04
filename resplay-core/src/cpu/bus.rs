@@ -110,10 +110,6 @@ impl CpuBus {
         }
     }
 
-    pub fn attach_catridge(&mut self, catridge: Cartridge) {
-        self.ppu.registers.bus.cartridge = Some(catridge);
-    }
-
     pub fn irq_status(&self) -> bool {
         self.apu.irq_status() | self.cartridge().map(|c| c.irq_status()).unwrap_or(false)
     }

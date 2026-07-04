@@ -2,17 +2,18 @@ use crate::cartridge::Mapper;
 
 /// Wrapper around a normal slice but allows for deriving Default for an arbitrary size at compile time
 /// because rust devs are too pedantic https://github.com/rust-lang/rust/issues/61415
-#[derive(Copy, Clone, Debug)]
-pub struct FixedArray<T, const C: usize>([T; C]);
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub struct FixedArray<T, const C: usize>(Box<[T]>);
 
-impl<T: Default + Copy, const C: usize> Default for FixedArray<T, C> {
+impl<T: Default + Clone, const C: usize> Default for FixedArray<T, C> {
     fn default() -> Self {
-        Self([Default::default(); C])
+        Self(vec![Default::default(); C].into_boxed_slice())
     }
 }
 
 impl<T, const C: usize> std::ops::Deref for FixedArray<T, C> {
-    type Target = [T; C];
+    type Target = [T];
     fn deref(&self) -> &Self::Target {
         &self.0
     }

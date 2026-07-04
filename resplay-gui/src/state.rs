@@ -1,4 +1,11 @@
-use crate::{Hotkey, audio::setup_audio_stream, texture::TextureMap, ui_window::PopupModal};
+use crate::{Hotkey, audio::setup_audio_stream, texture::TextureMap};
+
+#[derive(Debug)]
+pub enum NesRomSource {
+    Path(std::path::PathBuf),
+    Bytes(Vec<u8>),
+    MostRecent,
+}
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -10,21 +17,18 @@ pub struct State {
     #[serde(skip)]
     pub quick_saves: std::collections::HashMap<u8, resplay_core::Cpu>,
     #[serde(skip)]
-    pub popup_modal: PopupModal,
-    #[serde(skip)]
-    audio_stream: Option<cpal::Stream>,
+    pub audio_stream: Option<cpal::Stream>,
 
-    pub ui_render_time: f32,
     pub recent_file_paths: Vec<std::path::PathBuf>,
+    pub ui_render_time: f32,
     pub selected_quick_save: u8,
 }
 
 impl State {
     pub fn update_emulation(&mut self, ctx: &egui::Context) {
-        if let Err(err) = self
-            .emu
-            .update(|pixels| self.texture_map.update_ppu_texture(pixels))
-        {
+        if let Err(err) = self.emu.update(ctx.time() as f32, |pixels| {
+            self.texture_map.update_ppu_texture(pixels)
+        }) {
             log::warn!("CPU halted: {err}");
             self.emu.running = false;
         }
@@ -42,35 +46,47 @@ impl State {
         match setup_audio_stream(&mut self.emu) {
             Ok(stream) => self.audio_stream = Some(stream),
             Err(err) => {
-                self.popup_modal
-                    .error("Failed to initialize audio", format!("{err}"));
+                rfd::MessageDialog::new()
+                    .set_title("Failed to initialize audio")
+                    .set_description(format!("{err}"))
+                    .show();
             }
         }
     }
 
     /// Load a nes rom into the emulator
-    /// If none loads the most recent file
-    pub fn load_nes_rom(&mut self, path: Option<std::path::PathBuf>) {
-        let path = match path {
-            Some(path) => path,
-            None if !self.recent_file_paths.is_empty() => self.recent_file_paths.remove(0),
-            None => return,
+    pub fn load_nes_rom(&mut self, source: NesRomSource) {
+        let result = match source {
+            NesRomSource::MostRecent => {
+                if let Some(path) = self.recent_file_paths.first() {
+                    self.emu.load_nes_file(path)
+                } else {
+                    return;
+                }
+            }
+            NesRomSource::Path(path) => {
+                log::trace!("Loading {path:?}");
+                self.emu.load_nes_file(&path).inspect(|_| {
+                    // Make sure added path is on top
+                    self.recent_file_paths.retain(|x| *x != path);
+                    self.recent_file_paths.insert(0, path);
+                    self.recent_file_paths.truncate(20)
+                })
+            }
+            NesRomSource::Bytes(bytes) => self.emu.load_nes_rom(&bytes[..]),
         };
-        log::trace!("Loading {path:?}");
 
-        if let Err(err) = self.emu.load_nes_file(&path) {
-            self.popup_modal
-                .error("Failed to load NES ROM!".to_string(), format!("{err}"));
+        if let Err(err) = result {
+            rfd::MessageDialog::new()
+                .set_title("Failed to load NES ROM")
+                .set_description(format!("{err}"))
+                .show();
             log::error!("{err}");
         } else {
             log::trace!(
                 "Loaded cartridge with header: {:?}",
                 self.emu.cartridge().unwrap().header()
             );
-            // Make sure added path is on top
-            self.recent_file_paths.retain(|x| *x != path);
-            self.recent_file_paths.insert(0, path);
-            self.recent_file_paths.truncate(20);
             self.emu.running = true;
         }
     }
@@ -84,7 +100,7 @@ impl State {
             Hotkey::HardReset => {
                 self.emu = resplay_core::Emulator::default();
                 self.setup_audio_stream();
-                self.load_nes_rom(None);
+                self.load_nes_rom(NesRomSource::MostRecent);
             }
             Hotkey::PauseResume => self.emu.running = !self.emu.running,
             Hotkey::Step => {

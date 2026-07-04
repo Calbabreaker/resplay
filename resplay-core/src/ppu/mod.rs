@@ -17,7 +17,7 @@ pub const HEIGHT: usize = 240;
 pub const MAX_SPRITES_PER_SCAN: usize = 8;
 pub const PRERENDER_SCANLINE: usize = 261;
 
-pub type ScreenPixels = FixedArray<FixedArray<u8, 3>, { WIDTH * HEIGHT }>;
+pub type ScreenPixels = FixedArray<[u8; 3], { WIDTH * HEIGHT }>;
 
 pub enum PpuClockReport {
     None,
@@ -134,7 +134,7 @@ impl Ppu {
         } else {
             0
         };
-        *self.screen_pixels[x + self.registers.scanline * WIDTH] =
+        self.screen_pixels[x + self.registers.scanline * WIDTH] =
             self.get_palette_color(color_index);
     }
 
