@@ -29,8 +29,8 @@ impl Channels {
     pub fn clock(&mut self, cpu_cycles: u64) {
         self.triangle.clock();
         if cpu_cycles.is_multiple_of(2) {
-            self.pulse_0.sequencer.clock();
-            self.pulse_1.sequencer.clock();
+            self.pulse_0.clock();
+            self.pulse_1.clock();
             self.noise.clock();
             self.dmc.clock();
         }

@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use cpal::traits::StreamTrait;
-
 use crate::{
     Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, NesRomSource, State, ui_window::UiWindowKind,
 };

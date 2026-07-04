@@ -15,22 +15,13 @@ const PULSE_WAVEFORM: [[u8; 8]; 4] = [
 ];
 
 /// Generator for pulse/square wave
+#[derive(Default)]
 pub struct PulseChannel<const NUMBER: u16> {
+    pub duty: u8,
     pub sequencer: Sequencer,
     pub envelope: Envelope,
     pub length_counter: LengthCounter,
     pub sweep: Sweep<NUMBER>,
-}
-
-impl<const NUMBER: u16> Default for PulseChannel<NUMBER> {
-    fn default() -> Self {
-        Self {
-            sequencer: Sequencer::new(&PULSE_WAVEFORM[0]),
-            envelope: Envelope::default(),
-            length_counter: LengthCounter::default(),
-            sweep: Sweep::default(),
-        }
-    }
 }
 
 impl<const NUMBER: u16> PulseChannel<NUMBER> {
@@ -38,7 +29,7 @@ impl<const NUMBER: u16> PulseChannel<NUMBER> {
         match address - number * 4 {
             // 0x4000 or 0x4004 if number == 1 etc
             0x4000 => {
-                self.sequencer.sequence = &PULSE_WAVEFORM[(value >> 6) as usize];
+                self.duty = value >> 6;
                 self.envelope.write(value);
                 self.length_counter.halt = value & 0b0010_0000 != 0;
             }
@@ -54,9 +45,14 @@ impl<const NUMBER: u16> PulseChannel<NUMBER> {
         }
     }
 
+    pub fn clock(&mut self) {
+        self.sequencer
+            .clock(PULSE_WAVEFORM[self.duty as usize].len());
+    }
+
     pub fn sample(&self) -> u8 {
         if self.length_counter.playing() && !self.sweep.muted(&self.sequencer) {
-            self.sequencer.sample() * self.envelope.volume()
+            PULSE_WAVEFORM[self.duty as usize][self.sequencer.step] * self.envelope.volume()
         } else {
             0
         }

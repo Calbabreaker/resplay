@@ -1,4 +1,4 @@
-use super::counters::TimerCounter;
+use crate::apu::counters::TimerCounter;
 
 const DECAY_START: u8 = 15;
 

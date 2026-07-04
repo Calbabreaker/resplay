@@ -66,7 +66,7 @@ const LENGTH_COUNTER_VALUES: [u8; 32] = [
     12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct LengthCounter {
     pub halt: bool,
     counter: u8,

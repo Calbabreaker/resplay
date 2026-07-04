@@ -5,24 +5,13 @@ const TRIANGLE_WAVEFORM: [u8; 32] = [
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ];
 
+#[derive(Default)]
 pub struct TriangleChannel {
     pub length_counter: LengthCounter,
     pub linear_counter: u8,
     linear_counter_reload: bool,
     linear_counter_reload_value: u8,
     pub sequencer: Sequencer,
-}
-
-impl Default for TriangleChannel {
-    fn default() -> Self {
-        Self {
-            linear_counter: 0,
-            linear_counter_reload: true,
-            linear_counter_reload_value: 0,
-            length_counter: LengthCounter::default(),
-            sequencer: Sequencer::new(&TRIANGLE_WAVEFORM),
-        }
-    }
 }
 
 impl TriangleChannel {
@@ -61,11 +50,11 @@ impl TriangleChannel {
             // Prevent high frequencies from some games using this to silence the channel
             && self.sequencer.timer.start > 1
         {
-            self.sequencer.clock();
+            self.sequencer.clock(TRIANGLE_WAVEFORM.len());
         }
     }
 
     pub fn sample(&self) -> u8 {
-        self.sequencer.sample()
+        TRIANGLE_WAVEFORM[self.sequencer.step]
     }
 }
