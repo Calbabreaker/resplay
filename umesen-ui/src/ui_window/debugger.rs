@@ -1,4 +1,4 @@
-use crate::ActionKind;
+use crate::Hotkey;
 
 pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
     ui.style_mut().override_text_style = Some(egui::TextStyle::Monospace);
@@ -25,19 +25,19 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
             .button(if state.emu.running { "⏸" } else { "⏵" })
             .clicked()
         {
-            state.do_action(ActionKind::PauseResume);
+            state.do_hotkey(Hotkey::PauseResume);
         }
 
         if ui.button("⟳").clicked() {
-            state.do_action(ActionKind::SoftReset);
+            state.do_hotkey(Hotkey::SoftReset);
         }
 
         if ui.button("Step").clicked() {
-            state.do_action(ActionKind::Step);
+            state.do_hotkey(Hotkey::Step);
         }
 
         if ui.button("Next Frame").clicked() {
-            state.do_action(ActionKind::NextFrame);
+            state.do_hotkey(Hotkey::NextFrame);
         }
     });
 

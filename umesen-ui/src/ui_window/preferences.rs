@@ -1,4 +1,4 @@
-use crate::{ActionKind, Preferences};
+use crate::{Action, Preferences};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default, serde::Deserialize, serde::Serialize, Debug)]
 enum Tab {
@@ -75,16 +75,15 @@ pub fn show(ui: &mut egui::Ui, prefs: &mut Preferences) {
         }
         Tab::KeyBinds => {
             ui.horizontal_top(|ui| {
-                use ActionKind::*;
                 show_key_map(ui, prefs, "mainkeys", |action| {
-                    !matches!(action, ControllerInput(..))
+                    matches!(action, Action::Hotkey(..))
                 });
                 for i in 0..=1 {
                     show_key_map(
                         ui,
                         prefs,
                         format!("controllerkeys{i}"),
-                        |action| matches!(action, ControllerInput(num, _) if num == i),
+                        |action| matches!(action, Action::Controller(num, _) if num == i),
                     );
                 }
             });
@@ -102,11 +101,11 @@ fn show_key_map(
     ui: &mut egui::Ui,
     prefs: &mut Preferences,
     name: impl egui::AsIdSalt,
-    filter_func: impl Fn(ActionKind) -> bool,
+    filter_func: impl Fn(Action) -> bool,
 ) {
     egui::Grid::new(name).striped(true).show(ui, |ui| {
-        let mut action_to_rebind = prefs.key_action_map.action_to_rebind;
-        for (action, shortcut) in prefs.key_action_map.iter_map() {
+        let mut action_to_rebind = prefs.key_bindings.action_to_rebind;
+        for (action, shortcut) in prefs.key_bindings.iter_map() {
             if filter_func(action) {
                 ui.label(action.name());
 
@@ -121,6 +120,6 @@ fn show_key_map(
                 ui.end_row();
             }
         }
-        prefs.key_action_map.action_to_rebind = action_to_rebind;
+        prefs.key_bindings.action_to_rebind = action_to_rebind;
     });
 }

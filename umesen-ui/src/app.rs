@@ -1,20 +1,22 @@
 use std::collections::HashSet;
 
-use crate::{
-    ActionKind, DEFAULT_ACTION_MAP, Preferences, audio::setup_audio_stream, ui_window::UiWindowKind,
-};
+use crate::{Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, ui_window::UiWindowKind};
+
+#[derive(serde::Deserialize, serde::Serialize, Default)]
+#[serde(default)]
+pub struct Preferences {
+    pub key_bindings: KeybindingMap,
+    pub allow_illegal_press: bool,
+    pub ppu: umesen_core::ppu::PpuConfig,
+    pub apu: umesen_core::apu::ApuConfig,
+}
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
     preferences: Preferences,
-    recent_file_paths: Vec<std::path::PathBuf>,
-
-    #[serde(skip)]
     state: crate::State,
-    #[serde(skip)]
-    audio_stream: Option<cpal::Stream>,
 }
 
 impl App {
@@ -24,44 +26,9 @@ impl App {
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
-
-        if !app.recent_file_paths.is_empty() {
-            let path = app.recent_file_paths.remove(0);
-            app.load_nes_rom(path);
-        }
-
-        match setup_audio_stream(&mut app.state.emu) {
-            Ok(stream) => app.audio_stream = Some(stream),
-            Err(err) => {
-                app.ui_windows.insert(UiWindowKind::Popup {
-                    heading: "Failed to initialize audio".to_string(),
-                    message: format!("{err}"),
-                });
-            }
-        }
-
+        app.state.setup_audio_stream();
+        app.state.load_nes_rom(None);
         app
-    }
-
-    fn load_nes_rom(&mut self, path: std::path::PathBuf) {
-        log::trace!("Loading {path:?}");
-        if let Err(err) = self.state.emu.load_nes_file(&path) {
-            self.ui_windows.insert(UiWindowKind::Popup {
-                heading: "Failed to load NES ROM!".to_string(),
-                message: format!("{err}"),
-            });
-            log::error!("{err}");
-        } else {
-            log::trace!(
-                "Loaded cartridge with header: {:?}",
-                self.state.emu.cartridge().unwrap().header()
-            );
-            // Make sure added path is on top
-            self.recent_file_paths.retain(|x| *x != path);
-            self.recent_file_paths.insert(0, path);
-            self.recent_file_paths.truncate(20);
-            self.state.emu.running = true;
-        }
     }
 
     fn show_top_bar(&mut self, ui: &mut egui::Ui) {
@@ -71,17 +38,17 @@ impl App {
                     .add_filter("NES ROM", &["nes"])
                     .pick_file()
                 {
-                    self.load_nes_rom(path);
+                    self.state.load_nes_rom(Some(path));
                 }
                 ui.close();
             }
 
             ui.menu_button("Recent ROMS", |ui| {
-                let mut paths = self.recent_file_paths.iter();
+                let mut paths = self.state.recent_file_paths.iter();
                 let path = paths.find(|path| ui.button(path.to_string_lossy()).clicked());
 
                 if let Some(path) = path {
-                    self.load_nes_rom(path.to_path_buf());
+                    self.state.load_nes_rom(Some(path.to_path_buf()));
                     ui.close();
                 }
             });
@@ -115,8 +82,11 @@ impl App {
         });
 
         ui.menu_button("Emulation", |ui| {
-            use ActionKind::*;
-            self.show_action_list(ui, &[PauseResume, SoftReset, QuickSave, QuickLoad]);
+            use Hotkey::*;
+            self.show_hotkey_list(
+                ui,
+                &[PauseResume, SoftReset, HardReset, QuickSave, QuickLoad],
+            );
 
             ui.menu_button("Quick Save Slot", |ui| {
                 for i in 0..9 {
@@ -132,46 +102,47 @@ impl App {
         });
     }
 
-    fn show_action_list(&mut self, ui: &mut egui::Ui, list: &[ActionKind]) {
-        for action in list.iter() {
-            let binding = self.preferences.key_action_map.bindings_map.get(action);
-            let shortcut = binding.unwrap_or(&DEFAULT_ACTION_MAP[action]);
+    fn show_hotkey_list(&mut self, ui: &mut egui::Ui, list: &[Hotkey]) {
+        for hotkey in list.iter() {
+            let action = Action::Hotkey(*hotkey);
+            let binding = self.preferences.key_bindings.actions.get(&action);
+            let shortcut = binding.unwrap_or(&DEFAULT_ACTION_MAP[&action]);
             let button = egui::Button::new(action.name())
                 .shortcut_text(crate::egui_util::get_shortcut_text(shortcut));
             if ui.add(button).clicked() {
-                self.state.do_action(*action);
+                self.state.do_hotkey(*hotkey);
                 ui.close();
             }
         }
     }
 
     fn check_input(&mut self, i: &mut egui::InputState) {
-        // Do controller input seperate
-        for (action, shortcut) in self.preferences.key_action_map.iter_map() {
-            if let ActionKind::ControllerInput(number, button) = action {
-                let controller = self.state.emu.controller(number);
-                let key_down = i.key_down(shortcut.logical_key);
-                controller.set_button(button, key_down, self.preferences.allow_illegal_press);
-            } else if i.consume_shortcut(&shortcut) {
-                self.state.do_action(action);
+        for (action, shortcut) in self.preferences.key_bindings.iter_map() {
+            match action {
+                Action::Controller(number, button) => {
+                    let controller = self.state.emu.controller(number);
+                    let key_down = i.key_down(shortcut.logical_key);
+                    controller.set_button(button, key_down, self.preferences.allow_illegal_press);
+                }
+                Action::Hotkey(hotkey) => {
+                    if i.consume_shortcut(&shortcut) {
+                        self.state.do_hotkey(hotkey);
+                    }
+                }
             }
         }
 
-        self.preferences.key_action_map.check_key_down(i);
+        self.preferences.key_bindings.check_key_down(i);
 
         if let Some(path) = i.raw.dropped_files.pop().and_then(|f| f.path) {
-            self.load_nes_rom(path);
+            self.state.load_nes_rom(Some(path));
         }
         i.raw.dropped_files.clear();
     }
 }
 
 impl eframe::App for App {
-    /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        // Remove all popups from being saved
-        self.ui_windows
-            .retain(|kind| !matches!(kind, UiWindowKind::Popup { .. }));
         eframe::set_value(storage, eframe::APP_KEY, self);
     }
 
@@ -195,6 +166,7 @@ impl eframe::App for App {
 
         self.ui_windows
             .retain(|kind| kind.show(ui, &mut self.state, &mut self.preferences));
+        self.state.popup_modal.show(ui);
 
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE)

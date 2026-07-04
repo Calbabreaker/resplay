@@ -9,7 +9,7 @@ mod texture;
 mod ui_window;
 
 pub use action::*;
-pub use app::App;
+pub use app::*;
 pub use state::*;
 pub use texture::Texture;
 
