@@ -1,4 +1,4 @@
-use umesen_core::ppu::{
+use resplay_core::ppu::{
     NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, PATTERN_TILE_COUNT, TILE_SIZE, VramRegister,
     add_bit_planes, get_pattern_tile_addresses,
 };
@@ -66,7 +66,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
     }
 }
 
-fn show_palette(ui: &mut egui::Ui, ppu: &umesen_core::Ppu, palette_id: u8) {
+fn show_palette(ui: &mut egui::Ui, ppu: &resplay_core::Ppu, palette_id: u8) {
     let pixel_size = egui::Vec2::splat(15.);
     let (response, painter) =
         ui.allocate_painter(pixel_size * egui::vec2(4., 1.), egui::Sense::hover());
@@ -103,7 +103,7 @@ fn show_pattern_table<const TABLE_NUMBER: u16>(ui: &mut egui::Ui, state: &mut cr
     });
 }
 
-fn get_nametable_info(ppu: &umesen_core::Ppu, tile_index: u16) -> (u16, u8, VramRegister) {
+fn get_nametable_info(ppu: &resplay_core::Ppu, tile_index: u16) -> (u16, u8, VramRegister) {
     let mut register = VramRegister::default();
     register.set_coarse_x(tile_index % (NAMETABLE_SIZE_X * 2));
     register.set_coarse_y(tile_index / (NAMETABLE_SIZE_X * 2));
@@ -123,7 +123,7 @@ fn show_nametables(ui: &mut egui::Ui, state: &mut crate::State) {
         tile_count: [NAMETABLE_SIZE_X as usize * 2, NAMETABLE_SIZE_Y as usize * 2],
         image_scale: 1.,
     };
-    let get_tile_info_fn = |tile_index, ppu: &umesen_core::Ppu| {
+    let get_tile_info_fn = |tile_index, ppu: &resplay_core::Ppu| {
         let (tile_number, palette_id, _) = get_nametable_info(ppu, tile_index as u16);
         (tile_number, ppu.get_palette_colors(palette_id))
     };
@@ -141,7 +141,7 @@ fn show_nametables(ui: &mut egui::Ui, state: &mut crate::State) {
     );
 }
 
-fn show_selected_nametable_info(ui: &mut egui::Ui, emu: &mut umesen_core::Emulator) {
+fn show_selected_nametable_info(ui: &mut egui::Ui, emu: &mut resplay_core::Emulator) {
     ui.vertical(|ui| {
         if let Some(i) = ui.memory_mut(|m| m.data.get_persisted::<usize>("nametable".into())) {
             let mirroring = emu.cartridge().map(|c| c.mirroring()).unwrap_or_default();
@@ -159,7 +159,7 @@ fn show_selected_nametable_info(ui: &mut egui::Ui, emu: &mut umesen_core::Emulat
     });
 }
 
-fn show_selected_oam_info(ui: &mut egui::Ui, ppu: &umesen_core::Ppu) {
+fn show_selected_oam_info(ui: &mut egui::Ui, ppu: &resplay_core::Ppu) {
     ui.vertical(|ui| {
         if let Some(i) = ui.memory_mut(|m| m.data.get_persisted("oam_grid".into())) {
             let mut sprite = ppu.registers.get_oam_sprite(i, 0).unwrap();
@@ -180,7 +180,7 @@ fn show_selected_oam_info(ui: &mut egui::Ui, ppu: &umesen_core::Ppu) {
 }
 
 fn show_oam_grid(ui: &mut egui::Ui, state: &mut crate::State) {
-    let get_tile_info_fn = |tile_index, ppu: &umesen_core::Ppu| {
+    let get_tile_info_fn = |tile_index, ppu: &resplay_core::Ppu| {
         let sprite = ppu.registers.get_oam_sprite(tile_index, 0).unwrap();
         (
             sprite.tile_number(&ppu.registers),
@@ -211,7 +211,7 @@ fn show_pattern_tiles<'a>(
     ui: &mut egui::Ui,
     state: &'a mut crate::State,
     config: &UiPatternTilesConfig,
-    get_tile_info_fn: impl Fn(usize, &'a umesen_core::Ppu) -> (u16, [[u8; 3]; 4]),
+    get_tile_info_fn: impl Fn(usize, &'a resplay_core::Ppu) -> (u16, [[u8; 3]; 4]),
 ) -> egui::Response {
     let [tiles_x, tiles_y] = config.tile_count;
     let id = egui::Id::new(&config.name);

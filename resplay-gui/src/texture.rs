@@ -39,9 +39,9 @@ impl Texture {
 pub struct TextureMap(pub std::collections::HashMap<String, Texture>);
 
 impl TextureMap {
-    pub fn update_ppu_texture(&mut self, pixels: &umesen_core::ppu::ScreenPixels) {
+    pub fn update_ppu_texture(&mut self, pixels: &resplay_core::ppu::ScreenPixels) {
         let texture = self.0.entry("ppu_output".into()).or_insert_with(|| {
-            Texture::new([umesen_core::ppu::WIDTH, umesen_core::ppu::HEIGHT]) //
+            Texture::new([resplay_core::ppu::WIDTH, resplay_core::ppu::HEIGHT]) //
         });
 
         texture.update_pixels(

@@ -7,8 +7,8 @@ use crate::{Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, ui_window::UiWind
 pub struct Preferences {
     pub key_bindings: KeybindingMap,
     pub allow_illegal_press: bool,
-    pub ppu: umesen_core::ppu::PpuConfig,
-    pub apu: umesen_core::apu::ApuConfig,
+    pub ppu: resplay_core::ppu::PpuConfig,
+    pub apu: resplay_core::apu::ApuConfig,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]

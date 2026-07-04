@@ -1,6 +1,6 @@
 [workspace]
-members = ["umesen-core", "umesen-ui"]
-default-members = ["umesen-ui"]
+members = ["resplay-core", "resplay-gui"]
+default-members = ["resplay-gui"]
 resolver = "2"
 
 [profile.release-debug]

@@ -2,7 +2,7 @@ use cpal::traits::{DeviceTrait, HostTrait};
 use cpal::{Sample, traits::StreamTrait};
 use ringbuf::traits::Consumer;
 
-pub fn setup_audio_stream(emu: &mut umesen_core::Emulator) -> Result<cpal::Stream, cpal::Error> {
+pub fn setup_audio_stream(emu: &mut resplay_core::Emulator) -> Result<cpal::Stream, cpal::Error> {
     let host = cpal::default_host();
     let device = host
         .default_output_device()

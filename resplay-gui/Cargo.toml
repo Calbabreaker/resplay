@@ -1,5 +1,5 @@
 [package]
-name = "umesen-ui"
+name = "resplay-gui"
 version = "0.0.0"
 edition = "2024"
 
@@ -8,7 +8,7 @@ egui = "0.35"
 eframe = { version = "0.35", default-features = false, features = ["persistence", "wayland", "glow"] }
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
-umesen-core = { path = "../umesen-core" }
+resplay-core = { path = "../resplay-core" }
 rfd = "0.17"
 bitflags = "2"
 cpal = "0.18"

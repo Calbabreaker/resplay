@@ -68,7 +68,7 @@ impl CartridgeHeader {
             8 * 1024
         };
 
-        let mut prg_rom_size = dbg!(data[4] as usize) * 16 * 1024;
+        let mut prg_rom_size = (data[4] as usize) * 16 * 1024;
         let mut chr_rom_size = (data[5] as usize) * 8 * 1024;
 
         if is_v2 {

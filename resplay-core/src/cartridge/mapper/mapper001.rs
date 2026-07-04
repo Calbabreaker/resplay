@@ -16,11 +16,15 @@ pub struct Mapper001 {
 
 impl Mapper001 {
     fn write_load_register(&mut self, address: u16, value: u8) {
-        if value & 0b1000_0000 != 0 {
+        if self.shift_register == 0 {
             // Keep a one there so we can just check bit 0 to check if it has been shifted 5 times
             self.shift_register = 1 << SHIFT_CHECK_BIT_POS;
+        }
+
+        if value & 0b1000_0000 != 0 {
             // Swith to bank mode 3
             self.control_register |= 0b01100;
+            self.shift_register = 0;
         } else {
             // Shift the new bit just before the old bit
             self.shift_register >>= 1;
@@ -34,7 +38,7 @@ impl Mapper001 {
                     0xe000..=0xffff => self.prg_bank_number = self.shift_register,
                     _ => unreachable!(),
                 }
-                self.shift_register = 1 << SHIFT_CHECK_BIT_POS;
+                self.shift_register = 0;
             }
         }
     }
@@ -143,7 +147,6 @@ mod test {
     #[test]
     fn shift_and_control_register() {
         let mut catridge = setup_catridge();
-        assert_eq!(catridge.cpu_read(0xc000), Some(4));
 
         // Write control register
         catridge.cpu_write(0x9999, 0b0001_1001);

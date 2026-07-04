@@ -1,4 +1,4 @@
-use umesen_core::{Emulator, controller::Button};
+use resplay_core::{Emulator, controller::Button};
 
 // Test rom by kevtris https://www.qmtpro.com/~nes/misc/nestest.txt
 #[test]

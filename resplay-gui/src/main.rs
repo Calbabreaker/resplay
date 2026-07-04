@@ -17,12 +17,12 @@ pub use texture::Texture;
 fn main() -> eframe::Result {
     env_logger::builder()
         .parse_default_env()
-        .filter_module("umesen", log::LevelFilter::Trace)
+        .filter_module("resplay", log::LevelFilter::Trace)
         .filter_level(log::LevelFilter::Info)
         .init();
 
     eframe::run_native(
-        "Umesen",
+        "Resplay",
         eframe::NativeOptions::default(),
         Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )

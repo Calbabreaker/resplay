@@ -4,11 +4,11 @@ use crate::{Hotkey, audio::setup_audio_stream, texture::TextureMap, ui_window::P
 #[serde(default)]
 pub struct State {
     #[serde(skip)]
-    pub emu: umesen_core::Emulator,
+    pub emu: resplay_core::Emulator,
     #[serde(skip)]
     pub texture_map: TextureMap,
     #[serde(skip)]
-    pub quick_saves: std::collections::HashMap<u8, umesen_core::Cpu>,
+    pub quick_saves: std::collections::HashMap<u8, resplay_core::Cpu>,
     #[serde(skip)]
     pub popup_modal: PopupModal,
     #[serde(skip)]
@@ -51,12 +51,12 @@ impl State {
     /// Load a nes rom into the emulator
     /// If none loads the most recent file
     pub fn load_nes_rom(&mut self, path: Option<std::path::PathBuf>) {
-        log::trace!("Loading {path:?}");
         let path = match path {
             Some(path) => path,
             None if !self.recent_file_paths.is_empty() => self.recent_file_paths.remove(0),
             None => return,
         };
+        log::trace!("Loading {path:?}");
 
         if let Err(err) = self.emu.load_nes_file(&path) {
             self.popup_modal
@@ -82,7 +82,7 @@ impl State {
                 self.emu.running = true;
             }
             Hotkey::HardReset => {
-                self.emu = umesen_core::Emulator::default();
+                self.emu = resplay_core::Emulator::default();
                 self.setup_audio_stream();
                 self.load_nes_rom(None);
             }

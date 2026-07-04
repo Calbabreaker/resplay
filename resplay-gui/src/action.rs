@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use umesen_core::controller::Button;
+use resplay_core::controller::Button;
 
 #[derive(PartialEq, Eq, serde::Serialize, serde::Deserialize, Clone, Hash, Debug, Copy)]
 pub enum Hotkey {

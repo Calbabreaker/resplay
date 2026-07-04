@@ -1,8 +1,8 @@
-# Umesen (NES emulator)
+# Resplay (NES emulator)
 
 Cool NES emulator with some debugging tools.
 
-<img width="1917" height="1040" alt="Screenshot_20260704_043133" src="https://github.com/user-attachments/assets/a61c2333-cc73-4c4f-a89e-b86f504e0e9a" />
+<img width="1917" height="1014" alt="Screenshot_20260704_043133" src="https://github.com/user-attachments/assets/34dbb783-2ed6-40a0-9096-62db47e8a32c" />
 
 ## Running
 

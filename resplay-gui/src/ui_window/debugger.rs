@@ -43,7 +43,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
 
     ui.separator();
 
-    let mut disassembler = umesen_core::cpu::Disassembler::new(&state.emu.cpu);
+    let mut disassembler = resplay_core::cpu::Disassembler::new(&state.emu.cpu);
 
     let frame = egui::Frame::canvas(ui.style()).inner_margin(6.0);
     egui::CollapsingHeader::new("Disassemble")
