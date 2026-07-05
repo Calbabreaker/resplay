@@ -5,7 +5,7 @@ use crate::{
 
 /// INES designation for MMC3 boards
 /// https://www.nesdev.org/wiki/MMC3
-#[derive(Default, Debug)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Mapper004 {
     mirroring: Mirroring,
     registers: [u8; 8],
@@ -34,6 +34,7 @@ impl Mapper004 {
     }
 }
 
+#[typetag::serde]
 impl Mapper for Mapper004 {
     fn prg_bank_size(&self) -> KbUnit {
         KbUnit::Eight

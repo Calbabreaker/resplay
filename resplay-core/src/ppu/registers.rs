@@ -8,7 +8,7 @@ use crate::{
 };
 
 bitflags::bitflags! {
-    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Control: u8 {
         /// XY bits of nametable or each unit is 0x400 offset
         const NAMETABLE = 0b11;
@@ -44,7 +44,7 @@ impl Control {
 }
 
 bitflags::bitflags! {
-    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Mask: u8 {
         const GRAYSCALE = 1;
         /// Show background in leftmost 8 pixels of screen
@@ -79,7 +79,7 @@ impl Mask {
 }
 
 bitflags::bitflags! {
-    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Status: u8 {
         const SPRITE_OVERFLOW = 1 << 5;
         const SPRITE_0_HIT = 1 << 6;
@@ -90,7 +90,8 @@ bitflags::bitflags! {
 /// AKA how many frames before open bus decays to 0
 const OPEN_BUS_DECAY_START: u32 = 30;
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Registers {
     pub bus: PpuBus,
     pub control: Control,

@@ -1,7 +1,7 @@
 use crate::ppu::{Control, PATTERN_TILE_COUNT, Registers, get_pattern_tile_addresses};
 
 bitflags::bitflags! {
-    #[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
+    #[derive(Default, Clone, Copy, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
     pub struct Attributes: u8 {
         #[bitflags(flag_name = "")]
         const PALLETTE = 0b11;
@@ -17,7 +17,7 @@ impl Attributes {
     }
 }
 
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Sprite {
     pub x: u8,
     pub y: u8,

@@ -9,7 +9,7 @@ const NOISE_PERIODS: [u16; 16] = [
     2, 4, 8, 16, 32, 48, 64, 80, 101, 127, 190, 254, 381, 508, 1017, 2034,
 ];
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct NoiseChannel {
     pub timer: TimerCounter<u16>,
     pub length_counter: LengthCounter,

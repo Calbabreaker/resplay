@@ -8,6 +8,7 @@ mod mapper004;
 mod mapper007;
 
 /// Generic trait for underlying circuitry inside a catridge that will read and write to a catridge memory bank
+#[typetag::serde]
 pub trait Mapper: std::fmt::Debug {
     /// Static size of a bank return from map_cpu_read
     fn prg_bank_size(&self) -> KbUnit;

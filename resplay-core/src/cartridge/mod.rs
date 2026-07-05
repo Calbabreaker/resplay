@@ -6,6 +6,7 @@ pub use cartridge_banks::*;
 pub use cartridge_header::*;
 pub use mapper::{Mapper, create_mapper};
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Cartridge {
     banks: CartridgeBanks,
     header: CartridgeHeader,

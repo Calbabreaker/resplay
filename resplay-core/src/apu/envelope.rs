@@ -2,7 +2,7 @@ use crate::apu::counters::TimerCounter;
 
 const DECAY_START: u8 = 15;
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Envelope {
     timer: TimerCounter<u8>,
     constant_volume: bool,

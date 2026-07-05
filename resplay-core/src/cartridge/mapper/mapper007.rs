@@ -2,11 +2,12 @@ use crate::cartridge::{Bank, KbUnit, Mapper, Mirroring};
 
 /// INES designation for AxROM boards
 /// https://www.nesdev.org/wiki/AxROM
-#[derive(Default, Debug)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Mapper007 {
     bank_select: u8,
 }
 
+#[typetag::serde]
 impl Mapper for Mapper007 {
     fn prg_bank_size(&self) -> KbUnit {
         KbUnit::ThirtyTwo

@@ -12,7 +12,7 @@ pub const CYCLES_PER_FRAME: f32 = 29780.5;
 
 bitflags::bitflags! {
     /// Flags for the cpu register
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Flags: u8 {
         const CARRY = 1;
         const ZERO = 1 << 1;
@@ -47,7 +47,8 @@ const RESET_LOAD_VECTOR: u16 = 0xfffc;
 const IRQ_LOAD_VECTOR: u16 = 0xfffe;
 
 /// Emulated 6502 CPU
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Cpu {
     /// Program counter
     pub pc: u16,

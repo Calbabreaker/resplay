@@ -7,7 +7,8 @@ mod noise;
 mod pulse;
 mod triangle;
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Channels {
     pulse_0: pulse::PulseChannel<0>,
     pulse_1: pulse::PulseChannel<1>,

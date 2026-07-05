@@ -12,7 +12,8 @@ pub const TILE_SIZE: u16 = 8;
 pub const NAMETABLE_SIZE_X: u16 = 32;
 pub const NAMETABLE_SIZE_Y: u16 = 30;
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct PpuBus {
     pub palette_ram: FixedArray<u8, PALETTE_RAM_SIZE>,
     pub nametable_ram: FixedArray<u8, 0x800>,

@@ -2,9 +2,10 @@ use crate::cartridge::{Bank, KbUnit, Mapper};
 
 /// INES designation for NROM boards
 /// https://www.nesdev.org/wiki/NROM
-#[derive(Default, Debug)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Mapper000 {}
 
+#[typetag::serde]
 impl Mapper for Mapper000 {
     fn prg_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen

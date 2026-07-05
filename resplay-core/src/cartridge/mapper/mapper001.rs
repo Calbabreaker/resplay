@@ -5,7 +5,7 @@ const SHIFT_CHECK_BIT_POS: u8 = 5;
 
 /// INES designation for MMC1 boards
 /// https://www.nesdev.org/wiki/MMC1
-#[derive(Debug, Default)]
+#[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
 pub struct Mapper001 {
     shift_register: u8,
     control_register: u8,
@@ -44,6 +44,7 @@ impl Mapper001 {
     }
 }
 
+#[typetag::serde]
 impl Mapper for Mapper001 {
     fn prg_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen

@@ -7,7 +7,7 @@ pub enum FrameCounterState {
     None,
 }
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct FrameCounter {
     cycles_counter: i32,
     five_step_mode: bool,
@@ -66,7 +66,7 @@ const LENGTH_COUNTER_VALUES: [u8; 32] = [
     12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
-#[derive(Default, Clone)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct LengthCounter {
     pub halt: bool,
     counter: u8,
@@ -99,7 +99,7 @@ impl LengthCounter {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct TimerCounter<T> {
     pub start: T,
     pub counter: T,

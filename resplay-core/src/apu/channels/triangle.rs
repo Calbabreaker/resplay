@@ -5,7 +5,7 @@ const TRIANGLE_WAVEFORM: [u8; 32] = [
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 ];
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct TriangleChannel {
     pub length_counter: LengthCounter,
     pub linear_counter: u8,

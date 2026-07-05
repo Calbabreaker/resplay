@@ -1,6 +1,6 @@
 use super::counters::TimerCounter;
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Sequencer {
     /// 11 bit number for the sequencer to go to the next step
     pub timer: TimerCounter<u16>,

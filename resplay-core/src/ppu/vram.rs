@@ -8,7 +8,7 @@ use crate::ppu::{NAMETABLE_SIZE_X, NAMETABLE_SIZE_Y, TILE_SIZE};
 ///  |||||++-+++--------- coarse Y scroll
 ///  |||++--------------- nametable select X and y
 ///  +++----------------- fine Y scroll
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct VramRegister(pub u16);
 
 #[rustfmt::skip]

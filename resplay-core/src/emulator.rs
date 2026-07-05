@@ -16,7 +16,6 @@ pub struct Emulator {
     last_update_time: f32,
     last_frame_time: f32,
     frame_rate: f32,
-    audio_sample_rate: f32,
 }
 
 impl Default for Emulator {
@@ -26,7 +25,6 @@ impl Default for Emulator {
             running: true,
             cpu: Cpu::default(),
             last_frame_time: 0.,
-            audio_sample_rate: 0.,
             frame_rate: 0.,
             clocks_remaining: 0.,
             speed: 1.,
@@ -51,7 +49,7 @@ impl Emulator {
         mut on_frame_completed: impl FnMut(&ScreenPixels),
     ) -> Result<(), CpuError> {
         let delta = (now_secs - self.last_update_time).min(0.05) * self.speed;
-        self.apu().sample_rate = self.audio_sample_rate / self.speed;
+        self.apu().speed_scale = self.speed;
         self.last_update_time = now_secs;
         if !self.running {
             self.clocks_remaining = 0.;
@@ -77,12 +75,11 @@ impl Emulator {
         sample_rate: u32,
         buffer_length: std::time::Duration,
     ) -> ringbuf::HeapCons<f32> {
-        self.audio_sample_rate = sample_rate as f32;
-        self.apu().sample_rate = self.audio_sample_rate / self.speed;
-        let size = self.audio_sample_rate * buffer_length.as_secs_f32();
+        let sample_rate = sample_rate as f32;
+        let size = sample_rate * buffer_length.as_secs_f32();
         let rb = ringbuf::SharedRb::new(size as usize);
         let (prod, cons) = rb.split();
-        self.apu().buffer_prod = Some(prod);
+        self.apu().set_sample_buffer(sample_rate, prod);
         cons
     }
 
@@ -97,6 +94,14 @@ impl Emulator {
         self.ppu().registers.bus.cartridge = Some(Cartridge::from_nes(bytes)?);
         self.cpu.reset();
         Ok(())
+    }
+
+    pub fn load_cpu(&mut self, cpu: Cpu) {
+        let buffer = self.apu().take_sample_buffer();
+        self.cpu = cpu;
+        if let Some((sample_rate, prod)) = buffer {
+            self.apu().set_sample_buffer(sample_rate, prod);
+        }
     }
 
     pub fn frame_rate(&self) -> f32 {

@@ -2,11 +2,12 @@ use crate::cartridge::{Bank, KbUnit, Mapper};
 
 /// INES designation for CNROM boards
 /// https://www.nesdev.org/wiki/CNROM
-#[derive(Default, Debug)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Mapper003 {
     bank_number: u8,
 }
 
+#[typetag::serde]
 impl Mapper for Mapper003 {
     fn prg_bank_size(&self) -> KbUnit {
         KbUnit::ThirtyTwo

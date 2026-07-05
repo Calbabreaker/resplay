@@ -34,13 +34,19 @@ pub struct PpuConfig {
 }
 
 /// Emulated 2C02 NTSC PPU
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Ppu {
+    #[serde(skip)]
     pub config: PpuConfig,
-    pub registers: Registers,
+    #[serde(skip)]
     pub palette: Palette,
+    #[serde(skip)]
     pub screen_pixels: ScreenPixels,
+    #[serde(skip)]
     frame_complete: bool,
+
+    pub registers: Registers,
 
     // Bits shifted left every render dot so leftmost bit contains low and high bit of the current pixel index in the palette
     bg_shift_bits_low: u16,

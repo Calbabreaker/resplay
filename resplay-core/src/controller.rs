@@ -30,7 +30,7 @@ impl Button {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Controller {
     strobe_active: bool,
     shift_register: u8,

@@ -9,3 +9,4 @@ thiserror = "2"
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 ringbuf = "0.5"
+typetag = "0.2"

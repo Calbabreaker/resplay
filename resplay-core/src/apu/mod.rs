@@ -46,16 +46,18 @@ impl Default for ApuConfig {
 }
 
 /// Emulated RP2A03 NTSC APU
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Apu {
+    #[serde(skip)]
     pub config: ApuConfig,
     pub(crate) channels: Channels,
     frame_counter: FrameCounter,
 
-    pub(crate) sample_rate: f32,
-    pub(crate) buffer_prod: Option<ringbuf::HeapProd<f32>>,
-    high_pass: OnePoleFilter<true>,
-    cycles_since_sample: f32,
+    #[serde(skip)]
+    sender: Option<SampleSender>,
+    #[serde(skip)]
+    pub speed_scale: f32,
 }
 
 impl Apu {
@@ -85,16 +87,10 @@ impl Apu {
         let state = self.frame_counter.clock();
         self.channels.handle_frame_state(state);
 
-        if let Some(buffer) = self.buffer_prod.as_mut() {
-            while self.cycles_since_sample > 0. {
-                let mut sample = self.channels.sample(&self.config);
-                // Include low freq high pass filter to get rid of DC bias
-                sample = self.high_pass.process(sample, self.sample_rate, 20.);
-
-                buffer.try_push(sample).ok();
-                self.cycles_since_sample -= crate::cpu::CLOCK_SPEED_HZ / self.sample_rate;
-            }
-            self.cycles_since_sample += 1.;
+        if let Some(sender) = self.sender.as_mut()
+            && self.speed_scale != 0.
+        {
+            sender.check_send(|| self.channels.sample(&self.config), self.speed_scale);
         }
     }
 
@@ -104,6 +100,47 @@ impl Apu {
 
     pub(crate) fn reset(&mut self) {
         self.channels.set_enabled(Status::empty());
+    }
+
+    pub fn set_sample_buffer(&mut self, sample_rate: f32, buffer_prod: ringbuf::HeapProd<f32>) {
+        self.speed_scale = 1.;
+        self.sender = Some(SampleSender::new(sample_rate, buffer_prod));
+    }
+
+    pub fn take_sample_buffer(&mut self) -> Option<(f32, ringbuf::HeapProd<f32>)> {
+        let sender = self.sender.take()?;
+        Some((sender.sample_rate, sender.buffer_prod))
+    }
+}
+
+struct SampleSender {
+    sample_rate: f32,
+    buffer_prod: ringbuf::HeapProd<f32>,
+    high_pass: OnePoleFilter<true>,
+    cycles_since_sample: f32,
+}
+
+impl SampleSender {
+    fn new(sample_rate: f32, buffer_prod: ringbuf::HeapProd<f32>) -> Self {
+        Self {
+            sample_rate,
+            buffer_prod,
+            high_pass: OnePoleFilter::default(),
+            cycles_since_sample: 0.,
+        }
+    }
+
+    fn check_send(&mut self, get_sample: impl Fn() -> f32, speed_scale: f32) {
+        let real_sample_rate = self.sample_rate / speed_scale;
+        while self.cycles_since_sample > 0. {
+            let mut sample = get_sample();
+            // Include low freq high pass filter to get rid of DC bias
+            sample = self.high_pass.process(sample, real_sample_rate, 20.);
+
+            self.buffer_prod.try_push(sample).ok();
+            self.cycles_since_sample -= crate::cpu::CLOCK_SPEED_HZ / real_sample_rate;
+        }
+        self.cycles_since_sample += 1.;
     }
 }
 

@@ -21,7 +21,7 @@ pub struct App {
     state: crate::State,
 
     #[serde(skip)]
-    file_picker_channel: (
+    file_load_channel: (
         std::sync::mpsc::Sender<NesRomSource>,
         std::sync::mpsc::Receiver<NesRomSource>,
     ),
@@ -33,7 +33,7 @@ impl Default for App {
             ui_windows: HashSet::default(),
             preferences: Preferences::default(),
             state: State::default(),
-            file_picker_channel: std::sync::mpsc::channel(),
+            file_load_channel: std::sync::mpsc::channel(),
         }
     }
 }
@@ -45,17 +45,16 @@ impl App {
             .storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
             .unwrap_or_default();
-        app.state.load_nes_rom(NesRomSource::MostRecent);
         #[cfg(not(target_arch = "wasm32"))]
         app.state.setup_audio_stream();
         app
     }
 
-    fn show_file_dialog(&mut self) {
+    fn show_load_file_dialog(&mut self) {
         let dialog = rfd::AsyncFileDialog::new()
             .add_filter("NES ROM", &["nes"])
             .pick_file();
-        let sender = self.file_picker_channel.0.clone();
+        let sender = self.file_load_channel.0.clone();
 
         #[cfg(not(target_arch = "wasm32"))]
         std::thread::spawn(move || {
@@ -77,7 +76,7 @@ impl App {
     fn show_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             if ui.button("Open ROM...").clicked() {
-                self.show_file_dialog();
+                self.show_load_file_dialog();
                 ui.close();
             }
 
@@ -197,7 +196,7 @@ impl eframe::App for App {
 
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         ctx.input_mut(|i| self.check_input(i));
-        if let Ok(source) = self.file_picker_channel.1.try_recv() {
+        if let Ok(source) = self.file_load_channel.1.try_recv() {
             self.state.load_nes_rom(source);
         }
 

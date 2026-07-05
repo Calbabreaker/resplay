@@ -82,3 +82,12 @@ pub fn draw_rect_wrapped(
         color,
     );
 }
+
+pub fn show_error_dialog(title: impl Into<String>, error: impl std::error::Error) {
+    log::error!("{error}");
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title(title)
+        .set_description(format!("{error}"))
+        .show();
+}

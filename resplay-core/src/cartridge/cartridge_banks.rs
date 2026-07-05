@@ -2,7 +2,7 @@ use crate::cartridge::Mapper;
 
 /// Wrapper around a normal slice but allows for deriving Default for an arbitrary size at compile time
 /// because rust devs are too pedantic https://github.com/rust-lang/rust/issues/61415
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[repr(C)]
 pub struct FixedArray<T, const C: usize>(Box<[T]>);
 
@@ -41,7 +41,7 @@ pub enum Bank {
     FromLast(u8),
 }
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct MemoryBanks {
     bytes: Vec<u8>,
     bank_size: usize,
@@ -89,6 +89,7 @@ impl MemoryBanks {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct CartridgeBanks {
     pub prg_ram: MemoryBanks,
     pub prg_rom: MemoryBanks,

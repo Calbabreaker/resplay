@@ -6,7 +6,7 @@ pub const DMC_RATES: [u16; 16] = [
     214, 190, 170, 160, 143, 127, 113, 107, 95, 80, 71, 64, 53, 42, 36, 27,
 ];
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct DmcChannel {
     timer: TimerCounter<u16>,
     output_level: u8,
@@ -18,8 +18,9 @@ pub struct DmcChannel {
     bits_remaining: u8,
     pub irq: IrqStatus,
     looping: bool,
-    pub require_dma_at: Option<u16>,
     enabled: bool,
+    #[serde(skip)]
+    pub require_dma_at: Option<u16>,
 }
 
 impl DmcChannel {

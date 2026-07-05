@@ -8,7 +8,7 @@ pub enum NesParseError {
     IoError(#[from] std::io::Error),
 }
 
-#[derive(Default, Debug, PartialEq, Clone, Copy)]
+#[derive(Default, Debug, PartialEq, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub enum Mirroring {
     /// A A
     /// B B
@@ -28,7 +28,7 @@ pub enum Mirroring {
     FourScreen,
 }
 
-#[derive(Default, Debug, PartialEq, Clone)]
+#[derive(Default, Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CartridgeHeader {
     pub mapper_id: u16,
     pub submapper_id: u8,

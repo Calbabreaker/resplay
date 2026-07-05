@@ -4,12 +4,14 @@ use crate::{
     ppu::PpuClockReport,
 };
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct CpuBus {
     // 2kb of cpu ram
     pub ram: FixedArray<u8, 0x800>,
     pub apu: Apu,
     /// Number of cycles added when executing the previous instruction
+    #[serde(skip)]
     pub(crate) cpu_cycles_since_inst: u32,
     pub cpu_cycles_total: u64,
     pub ppu: Ppu,
@@ -144,7 +146,7 @@ impl CpuBus {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
 pub struct IrqStatus {
     pub status: bool,
     enabled: bool,

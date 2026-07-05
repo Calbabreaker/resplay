@@ -15,7 +15,7 @@ const PULSE_WAVEFORM: [[u8; 8]; 4] = [
 ];
 
 /// Generator for pulse/square wave
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct PulseChannel<const NUMBER: u16> {
     pub duty: u8,
     pub sequencer: Sequencer,
@@ -59,7 +59,7 @@ impl<const NUMBER: u16> PulseChannel<NUMBER> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, serde::Serialize, serde::Deserialize)]
 pub struct Sweep<const NUMBER: u16> {
     enabled: bool,
     timer: TimerCounter<u8>,
