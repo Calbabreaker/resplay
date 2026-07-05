@@ -1,8 +1,0 @@
-[workspace]
-members = ["resplay-core", "resplay-gui"]
-default-members = ["resplay-gui"]
-resolver = "2"
-
-[profile.release-debug]
-inherits = "release"
-debug = true
