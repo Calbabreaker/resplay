@@ -1,0 +1,8 @@
+<!doctype html><html lang=en><meta charset=UTF-8><title>Resplay - NES Emulator</title><style>body{background-color:#000;margin:0;padding:0}canvas{width:100vw;height:100vh}</style><link crossorigin href=/resplay/resplay-gui-8d81d89f5473ebc5.js integrity=sha384-2NGSiKo6w19jEc4hoKCG0eXKA7MP9HVhXTnQ0TGoW9lrq7IPk8EdFVnrelzomhUf rel=modulepreload><link as=fetch crossorigin href=/resplay/resplay-gui-8d81d89f5473ebc5_bg.wasm integrity=sha384-FyONiMtJnycm5lP7OxS9RQMmdo7t3zSaB4qti+ZNWFJAk5y1bbNnO4ieHm1fRZlv rel=preload type=application/wasm></head><body><p id=loading>Loading...</p><canvas id=canvas></canvas><script type=module>import init, * as bindings from '/resplay/resplay-gui-8d81d89f5473ebc5.js';
+const wasm = await init({ module_or_path: '/resplay/resplay-gui-8d81d89f5473ebc5_bg.wasm' });
+
+
+window.wasmBindings = bindings;
+
+
+dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));</script></body></html>
