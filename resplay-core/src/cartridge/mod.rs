@@ -114,4 +114,9 @@ impl Cartridge {
     pub fn debug_mapper(&self) -> String {
         format!("{:?}", self.mapper)
     }
+
+    pub fn set_roms(&mut self, other: Cartridge) {
+        self.banks.prg_rom = other.banks.prg_rom;
+        self.banks.chr_rom = other.banks.chr_rom;
+    }
 }

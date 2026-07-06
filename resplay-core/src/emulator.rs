@@ -83,22 +83,33 @@ impl Emulator {
         cons
     }
 
-    pub fn load_nes_file(
-        &mut self,
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<(), NesParseError> {
-        self.load_nes_rom(std::fs::File::open(path)?)
-    }
-
     pub fn load_nes_rom(&mut self, bytes: impl std::io::Read) -> Result<(), NesParseError> {
         self.ppu().registers.bus.cartridge = Some(Cartridge::from_nes(bytes)?);
         self.cpu.reset();
         Ok(())
     }
 
+    pub fn save_state(&mut self) -> Vec<u8> {
+        postcard::to_allocvec(&self.cpu).unwrap()
+    }
+
+    /// Loads the save state while keeping the audio buffer and ROM data the same
+    pub fn load_state(&mut self, data: &[u8]) -> postcard::Result<()> {
+        let cpu = postcard::from_bytes(data)?;
+        self.load_cpu(cpu);
+        Ok(())
+    }
+
+    /// Loads the CPU into self.cpu while keeping the audio buffer and ROM data the same
     pub fn load_cpu(&mut self, cpu: Cpu) {
+        let prev_cart = self.ppu().registers.bus.cartridge.take();
         let buffer = self.apu().take_sample_buffer();
         self.cpu = cpu;
+        if let Some(cart) = self.cpu.bus.cartridge_mut()
+            && let Some(prev_cart) = prev_cart
+        {
+            cart.set_roms(prev_cart);
+        }
         if let Some((sample_rate, prod)) = buffer {
             self.apu().set_sample_buffer(sample_rate, prod);
         }

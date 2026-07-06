@@ -2406,6 +2406,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.13.0",
  "log",
+ "postcard",
  "ringbuf",
  "serde",
  "thiserror 2.0.18",
@@ -2424,7 +2425,6 @@ dependencies = [
  "indexmap",
  "log",
  "pollster",
- "postcard",
  "resplay-core",
  "rfd",
  "ringbuf",
