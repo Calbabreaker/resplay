@@ -36,11 +36,11 @@ impl Mapper004 {
 
 #[typetag::serde]
 impl Mapper for Mapper004 {
-    fn prg_bank_size(&self) -> KbUnit {
+    fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::Eight
     }
 
-    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
+    fn map_prg_rom(&self, address: u16) -> Option<Bank> {
         let bank_order = [
             Bank::Number(self.registers[6]),
             Bank::Number(self.registers[7]),
@@ -105,7 +105,7 @@ impl Mapper for Mapper004 {
         KbUnit::One
     }
 
-    fn map_ppu(&self, address: u16) -> Bank {
+    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
         let mut section_0 = [
             Bank::Number(self.registers[0] & !1),
             Bank::Number(self.registers[0] | 1),
@@ -123,9 +123,9 @@ impl Mapper for Mapper004 {
         }
         let i = address as usize / 0x400;
         match address {
-            0x0000..=0x0fff => section_0[i],
-            0x1000..=0x1fff => section_1[i - 4],
-            _ => unreachable!(),
+            0x0000..=0x0fff => Some(section_0[i]),
+            0x1000..=0x1fff => Some(section_1[i - 4]),
+            _ => None,
         }
     }
 

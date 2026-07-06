@@ -14,7 +14,7 @@ impl Texture {
     }
 
     pub fn image(&mut self, ui: &egui::Ui) -> egui::Image<'_> {
-        let mut handle = self.handle.take().unwrap_or_else(|| {
+        let handle = self.handle.get_or_insert_with(|| {
             ui.ctx().load_texture(
                 "",
                 egui::ColorImage::new([0, 0], Vec::new()),
@@ -25,7 +25,6 @@ impl Texture {
         if let Some(data) = self.image_data.take() {
             handle.set(data, egui::TextureOptions::NEAREST);
         }
-        self.handle = Some(handle);
 
         egui::Image::new(self.handle.as_ref().unwrap())
     }

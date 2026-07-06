@@ -38,8 +38,8 @@ pub struct CartridgeHeader {
     pub has_battery: bool,
     pub prg_rom_size: usize,
     pub prg_ram_size: usize,
-    pub chr_mem_size: usize,
-    pub chr_mem_is_rom: bool,
+    pub chr_ram_size: usize,
+    pub chr_rom_size: usize,
 }
 
 impl CartridgeHeader {
@@ -55,6 +55,9 @@ impl CartridgeHeader {
         let is_v2 = data[7] & 0b0000_1100 == 0b0000_1000;
         let mut mapper_id = ((data[6] >> 4) | (data[7] & 0xf0)) as u16;
 
+        let mut prg_rom_size = (data[4] as usize) * 16 * 1024;
+        let mut chr_rom_size = (data[5] as usize) * 8 * 1024;
+
         let prg_ram_size = if is_v2 {
             get_ram_size(data[10], has_battery)
         } else {
@@ -64,12 +67,11 @@ impl CartridgeHeader {
 
         let chr_ram_size = if is_v2 {
             get_ram_size(data[11], false)
-        } else {
+        } else if chr_rom_size == 0 {
             8 * 1024
+        } else {
+            0
         };
-
-        let mut prg_rom_size = (data[4] as usize) * 16 * 1024;
-        let mut chr_rom_size = (data[5] as usize) * 8 * 1024;
 
         if is_v2 {
             prg_rom_size |= (data[9] as usize & 0x0f) << 8;
@@ -95,12 +97,8 @@ impl CartridgeHeader {
             },
             has_battery,
             has_trainer: data[6] & 0b0000_0100 != 0,
-            chr_mem_size: if chr_rom_size == 0 {
-                chr_ram_size
-            } else {
-                chr_rom_size
-            },
-            chr_mem_is_rom: chr_rom_size != 0,
+            chr_rom_size,
+            chr_ram_size,
             prg_ram_size,
             is_v2,
         })
@@ -138,10 +136,10 @@ mod test {
                 mapper_id: 3,
                 mirroring: Mirroring::Vertical,
                 prg_rom_size: 32 * 1024,
-                chr_mem_size: 8 * 1024,
+                chr_rom_size: 8 * 1024,
                 prg_ram_size: 8 * 1024,
                 has_trainer: false,
-                chr_mem_is_rom: true,
+                chr_ram_size: 0,
                 is_v2: false
             }
         )

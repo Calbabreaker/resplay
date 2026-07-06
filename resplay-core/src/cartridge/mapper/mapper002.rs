@@ -9,11 +9,11 @@ pub struct Mapper002 {
 
 #[typetag::serde]
 impl Mapper for Mapper002 {
-    fn prg_bank_size(&self) -> KbUnit {
+    fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen
     }
 
-    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
+    fn map_prg_rom(&self, address: u16) -> Option<Bank> {
         Some(match address {
             0x8000..=0xbfff => Bank::Number(self.bank_number_low),
             0xc000..=0xffff => Bank::FromLast(0),
@@ -25,14 +25,6 @@ impl Mapper for Mapper002 {
         if let 0x8000..=0xffff = address {
             self.bank_number_low = value;
         }
-    }
-
-    fn chr_bank_size(&self) -> KbUnit {
-        KbUnit::Eight
-    }
-
-    fn map_ppu(&self, _: u16) -> Bank {
-        Bank::Number(0)
     }
 }
 

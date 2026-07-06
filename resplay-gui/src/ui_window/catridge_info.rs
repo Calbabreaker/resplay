@@ -14,13 +14,12 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
         catridge.header().prg_ram_size
     ));
     ui.label(format!(
-        "CHR {} size: {:?}",
-        if catridge.header().chr_mem_is_rom {
-            "ROM"
-        } else {
-            "RAM"
-        },
-        catridge.header().chr_mem_size
+        "CHR ROM size: {:?}",
+        catridge.header().chr_rom_size
+    ));
+    ui.label(format!(
+        "CHR RAM size: {:?}",
+        catridge.header().chr_ram_size
     ));
     ui.label(format!("Mirroring: {:?}", catridge.mirroring()));
 

@@ -46,11 +46,11 @@ impl Mapper001 {
 
 #[typetag::serde]
 impl Mapper for Mapper001 {
-    fn prg_bank_size(&self) -> KbUnit {
+    fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen
     }
 
-    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
+    fn map_prg_rom(&self, address: u16) -> Option<Bank> {
         let (bank_8000, bank_c000) = match self.control_register & 0b01100 {
             // 32 kib mode
             0b00000 | 0b00100 => half_double_bank(self.prg_bank_number),
@@ -61,11 +61,11 @@ impl Mapper for Mapper001 {
             _ => unreachable!(),
         };
 
-        Some(match address {
-            0x8000..=0xbfff => bank_8000,
-            0xc000..=0xffff => bank_c000,
-            _ => return None,
-        })
+        match address {
+            0x8000..=0xbfff => Some(bank_8000),
+            0xc000..=0xffff => Some(bank_c000),
+            _ => None,
+        }
     }
 
     fn cpu_write(&mut self, address: u16, value: u8) {
@@ -78,22 +78,22 @@ impl Mapper for Mapper001 {
         KbUnit::Four
     }
 
-    fn map_ppu(&self, address: u16) -> Bank {
-        let (bank_0000, bank_1000) = match self.control_register & 0b10000 {
+    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
+        let (bank_0000, bank_1000) = if self.control_register & 0b10000 == 0 {
             // 8 Kib mode
-            0b00000 => half_double_bank(self.chr_bank_number_0),
+            half_double_bank(self.chr_bank_number_0)
+        } else {
             // 4 Kib split mode
-            0b10000 => (
+            (
                 Bank::Number(self.chr_bank_number_0),
                 Bank::Number(self.chr_bank_number_1),
-            ),
-            _ => unreachable!(),
+            )
         };
 
         match address {
-            0x0000..=0x0fff => bank_0000,
-            0x1000..=0x1fff => bank_1000,
-            _ => unreachable!(),
+            0x0000..=0x0fff => Some(bank_0000),
+            0x1000..=0x1fff => Some(bank_1000),
+            _ => None,
         }
     }
 

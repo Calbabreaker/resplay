@@ -16,15 +16,19 @@ pub struct Cartridge {
 impl Cartridge {
     fn new(
         header: CartridgeHeader,
-        prg_ram: Vec<u8>,
         prg_rom: Vec<u8>,
-        chr_mem: Vec<u8>,
+        chr_rom: Vec<u8>,
     ) -> Result<Self, NesParseError> {
         let mapper = create_mapper(header.mapper_id)
             .ok_or(NesParseError::UnsupportedMapper(header.mapper_id))?;
-        // mapper.reset();
         Ok(Cartridge {
-            banks: CartridgeBanks::new(prg_ram, prg_rom, chr_mem, mapper.as_ref()),
+            banks: CartridgeBanks::new(
+                prg_rom,
+                chr_rom,
+                header.prg_ram_size,
+                header.chr_ram_size,
+                mapper.as_ref(),
+            ),
             mapper,
             header,
         })
@@ -42,13 +46,10 @@ impl Cartridge {
 
         let mut prg_rom = vec![0; header.prg_rom_size];
         bytes.read_exact(&mut prg_rom)?;
-        let mut chr_mem = vec![0; header.chr_mem_size];
-        if header.chr_mem_is_rom {
-            bytes.read_exact(&mut chr_mem)?;
-        }
+        let mut chr_rom = vec![0; header.chr_rom_size];
+        bytes.read_exact(&mut chr_rom)?;
 
-        let prg_ram = vec![0; header.prg_ram_size];
-        let mut cartridge = Self::new(header, prg_ram, prg_rom, chr_mem)?;
+        let mut cartridge = Self::new(header, prg_rom, chr_rom)?;
         for (i, byte) in trainer_data.iter().enumerate() {
             cartridge.cpu_write((0x7000 + i) as u16, *byte);
         }
@@ -56,26 +57,29 @@ impl Cartridge {
     }
 
     pub fn cpu_read(&self, address: u16) -> Option<u8> {
-        if let Some(mapping) = self.mapper.map_cpu_read(address) {
-            self.banks.prg_rom.read(mapping, address)
-        } else if let 0x6000..=0x7fff = address {
-            self.banks.prg_ram.read(Bank::Number(0), address)
+        if let Some(bank) = self.mapper.map_prg_rom(address) {
+            self.banks.prg_rom.read(bank, address)
+        } else if let Some(bank) = self.mapper.map_prg_ram(address) {
+            self.banks.prg_ram.read(bank, address)
         } else {
             None
         }
     }
 
     pub fn cpu_write(&mut self, address: u16, value: u8) {
-        if let 0x6000..=0x7fff = address {
-            self.banks.prg_ram.write(Bank::Number(0), address, value);
-        }
         self.mapper.cpu_write(address, value);
+        if let Some(bank) = self.mapper.map_prg_ram(address) {
+            self.banks.prg_ram.write(bank, address, value);
+        }
     }
 
     pub fn ppu_peek_read(&self, address: u16) -> Option<u8> {
-        if let 0x0000..=0x1fff = address {
-            let mapping = self.mapper.map_ppu(address);
-            self.banks.chr_mem.read(mapping, address)
+        if !self.banks.chr_rom.bytes.is_empty()
+            && let Some(bank) = self.mapper.map_chr_rom(address)
+        {
+            self.banks.chr_rom.read(bank, address)
+        } else if let Some(bank) = self.mapper.map_chr_ram(address) {
+            self.banks.chr_ram.read(bank, address)
         } else {
             None
         }
@@ -88,11 +92,8 @@ impl Cartridge {
 
     pub fn ppu_write(&mut self, address: u16, value: u8) {
         self.mapper.monitor_ppu(address);
-        if let 0x0000..=0x1fff = address {
-            let mapping = self.mapper.map_ppu(address);
-            if !self.header.chr_mem_is_rom {
-                self.banks.chr_mem.write(mapping, address, value);
-            }
+        if let Some(bank) = self.mapper.map_chr_ram(address) {
+            self.banks.chr_ram.write(bank, address, value);
         }
     }
 

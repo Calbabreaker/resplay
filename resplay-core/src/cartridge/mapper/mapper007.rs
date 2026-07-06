@@ -9,11 +9,11 @@ pub struct Mapper007 {
 
 #[typetag::serde]
 impl Mapper for Mapper007 {
-    fn prg_bank_size(&self) -> KbUnit {
+    fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::ThirtyTwo
     }
 
-    fn map_cpu_read(&self, address: u16) -> Option<Bank> {
+    fn map_prg_rom(&self, address: u16) -> Option<Bank> {
         Some(match address {
             0x8000..=0xffff => Bank::Number(self.bank_select & 0b0000_0111),
             _ => return None,
@@ -32,14 +32,6 @@ impl Mapper for Mapper007 {
         } else {
             Mirroring::SingleScreenHigh
         })
-    }
-
-    fn chr_bank_size(&self) -> KbUnit {
-        KbUnit::Eight
-    }
-
-    fn map_ppu(&self, _: u16) -> Bank {
-        Bank::Number(0)
     }
 }
 

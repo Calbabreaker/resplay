@@ -7,23 +7,63 @@ mod mapper003;
 mod mapper004;
 mod mapper007;
 
-/// Generic trait for underlying circuitry inside a catridge that will read and write to a catridge memory bank
+/// Generic trait for underlying circuitry inside a catridge that maps to specific ROM and RAM banks
+/// in a cartridge
 #[typetag::serde]
+#[allow(unused_variables)]
 pub trait Mapper: std::fmt::Debug {
+    fn cpu_write(&mut self, address: u16, value: u8) {}
+
     /// Static size of a bank return from map_cpu_read
-    fn prg_bank_size(&self) -> KbUnit;
-    fn map_cpu_read(&self, address: u16) -> Option<Bank>;
-    fn cpu_write(&mut self, address: u16, value: u8);
+    fn prg_rom_bank_size(&self) -> KbUnit {
+        KbUnit::ThirtyTwo
+    }
+
+    /// Maps entire range by default
+    fn map_prg_rom(&self, address: u16) -> Option<Bank> {
+        if let 0x8000..=0xffff = address {
+            Some(Bank::Number(0))
+        } else {
+            None
+        }
+    }
+
+    /// Most mappers have unmapped memory between 0x6000 and 0x7fff
+    fn map_prg_ram(&self, address: u16) -> Option<Bank> {
+        if let 0x6000..=0x7fff = address {
+            Some(Bank::Number(0))
+        } else {
+            None
+        }
+    }
+
+    /// Called whenever the PPU reads or writes to any address in its range
+    fn monitor_ppu(&mut self, address: u16) {}
 
     /// Static size of a bank return from chr_bank_size
-    fn chr_bank_size(&self) -> KbUnit;
-    fn map_ppu(&self, address: u16) -> Bank;
-    fn monitor_ppu(&mut self, _address: u16) {}
+    fn chr_bank_size(&self) -> KbUnit {
+        KbUnit::Eight
+    }
+
+    /// Maps the region between 0x0000 and 0x1fff
+    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
+        if let 0x0000..=0x1fff = address {
+            Some(Bank::Number(0))
+        } else {
+            None
+        }
+    }
+
+    /// Most mappers have interchangable CHR-ROM and CHR-RAM but some have both and can switch them
+    fn map_chr_ram(&self, address: u16) -> Option<Bank> {
+        self.map_chr_rom(address)
+    }
 
     /// Used to send irq to cpu
     fn irq_status(&self) -> bool {
         false
     }
+
     /// Option to override mirroring from header
     fn mirroring(&self) -> Option<Mirroring> {
         None
@@ -55,14 +95,14 @@ mod test {
         chr_rom_banks_values: &[&[u8]],
     ) -> Cartridge {
         let mapper = create_mapper(mapper_id).unwrap();
-        let prg_rom = create_banks_rom(mapper.prg_bank_size() as usize, prg_rom_banks_values);
+        let prg_rom = create_banks_rom(mapper.prg_rom_bank_size() as usize, prg_rom_banks_values);
         let chr_rom = create_banks_rom(mapper.chr_bank_size() as usize, chr_rom_banks_values);
         let header = CartridgeHeader {
             mapper_id,
-            chr_mem_is_rom: true,
+            prg_ram_size: 1024,
             ..Default::default()
         };
-        Cartridge::new(header, vec![0; 1024], prg_rom, chr_rom).unwrap()
+        Cartridge::new(header, prg_rom, chr_rom).unwrap()
     }
 
     fn create_banks_rom(bank_size: usize, banks_values: &[&[u8]]) -> Vec<u8> {
