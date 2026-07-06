@@ -15,11 +15,8 @@ impl Mapper for Mapper003 {
         }
     }
 
-    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
-        match address {
-            0x0000..=0x1fff => Some(Bank::Number(self.bank_number)),
-            _ => None,
-        }
+    fn map_chr(&self, _: u16) -> Bank {
+        Bank::Number(self.bank_number)
     }
 }
 

@@ -41,20 +41,14 @@ impl Mapper for Mapper004 {
     }
 
     fn map_prg_rom(&self, address: u16) -> Option<Bank> {
-        let bank_order = [
-            Bank::Number(self.registers[6]),
-            Bank::Number(self.registers[7]),
-            Bank::FromLast(1),
-        ];
-        match address {
-            0x8000..=0xdfff => {
-                let mut i = (address as usize >> 13) & 0b11;
-                if self.prg_mode_flip {
-                    i = bank_order.len() - i - 1;
-                }
-                Some(bank_order[i])
-            }
-            0xe000..=0xffff => Some(Bank::FromLast(0)),
+        match (
+            address / self.prg_rom_bank_size() as u16,
+            self.prg_mode_flip,
+        ) {
+            (4, false) | (6, true) => Some(Bank::Number(self.registers[6])),
+            (5, false) | (5, true) => Some(Bank::Number(self.registers[7])),
+            (6, false) | (4, true) => Some(Bank::FromLast(1)),
+            (7, _) => Some(Bank::FromLast(0)),
             _ => None,
         }
     }
@@ -105,27 +99,17 @@ impl Mapper for Mapper004 {
         KbUnit::One
     }
 
-    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
-        let mut section_0 = [
-            Bank::Number(self.registers[0] & !1),
-            Bank::Number(self.registers[0] | 1),
-            Bank::Number(self.registers[1] & !1),
-            Bank::Number(self.registers[1] | 1),
-        ];
-        let mut section_1 = [
-            Bank::Number(self.registers[2]),
-            Bank::Number(self.registers[3]),
-            Bank::Number(self.registers[4]),
-            Bank::Number(self.registers[5]),
-        ];
-        if self.chr_mode_flip {
-            std::mem::swap(&mut section_0, &mut section_1);
-        }
-        let i = address as usize / 0x400;
-        match address {
-            0x0000..=0x0fff => Some(section_0[i]),
-            0x1000..=0x1fff => Some(section_1[i - 4]),
-            _ => None,
+    fn map_chr(&self, address: u16) -> Bank {
+        match (address / self.chr_bank_size() as u16, self.chr_mode_flip) {
+            (0, false) | (4, true) => Bank::Number(self.registers[0] & !1),
+            (1, false) | (5, true) => Bank::Number(self.registers[0] | 1),
+            (2, false) | (6, true) => Bank::Number(self.registers[1] & !1),
+            (3, false) | (7, true) => Bank::Number(self.registers[1] | 1),
+            (4, false) | (0, true) => Bank::Number(self.registers[2]),
+            (5, false) | (1, true) => Bank::Number(self.registers[3]),
+            (6, false) | (2, true) => Bank::Number(self.registers[4]),
+            (7, false) | (3, true) => Bank::Number(self.registers[5]),
+            _ => unreachable!(),
         }
     }
 

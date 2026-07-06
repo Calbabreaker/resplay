@@ -74,12 +74,13 @@ impl Cartridge {
     }
 
     pub fn ppu_peek_read(&self, address: u16) -> Option<u8> {
-        if !self.banks.chr_rom.bytes.is_empty()
-            && let Some(bank) = self.mapper.map_chr_rom(address)
-        {
-            self.banks.chr_rom.read(bank, address)
-        } else if let Some(bank) = self.mapper.map_chr_ram(address) {
-            self.banks.chr_ram.read(bank, address)
+        if let 0x0000..=0x1fff = address {
+            let bank = self.mapper.map_chr(address);
+            if !self.banks.chr_rom.bytes.is_empty() {
+                self.banks.chr_rom.read(bank, address)
+            } else {
+                self.banks.chr_ram.read(bank, address)
+            }
         } else {
             None
         }
@@ -92,7 +93,8 @@ impl Cartridge {
 
     pub fn ppu_write(&mut self, address: u16, value: u8) {
         self.mapper.monitor_ppu(address);
-        if let Some(bank) = self.mapper.map_chr_ram(address) {
+        if let 0x0000..=0x1fff = address {
+            let bank = self.mapper.map_chr(address);
             self.banks.chr_ram.write(bank, address, value);
         }
     }

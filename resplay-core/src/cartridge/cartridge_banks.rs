@@ -26,13 +26,14 @@ impl<T, const C: usize> std::ops::DerefMut for FixedArray<T, C> {
 }
 
 /// Enum to make sure number of kilobytes is power of 2
+#[repr(usize)]
 pub enum KbUnit {
-    One = 1,
-    Two = 2,
-    Four = 4,
-    Eight = 8,
-    SixTeen = 16,
-    ThirtyTwo = 32,
+    One = 1024,
+    Two = 2 * 1024,
+    Four = 4 * 1024,
+    Eight = 8 * 1024,
+    SixTeen = 16 * 1024,
+    ThirtyTwo = 32 * 1024,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -50,7 +51,7 @@ pub struct MemoryBanks {
 
 impl MemoryBanks {
     pub fn new(mut bytes: Vec<u8>, bank_size_kb: KbUnit) -> Self {
-        let bank_size = 1024 * bank_size_kb as usize;
+        let bank_size = bank_size_kb as usize;
         let num_banks = bytes.len().div_ceil(bank_size);
         if !bytes.is_empty() && !bytes.len().is_power_of_two() {
             // Make sure bytes is aligned to a power of two so we can use bitwise and to mirror

@@ -22,7 +22,7 @@ impl Default for Emulator {
     fn default() -> Self {
         Self {
             last_update_time: 0.,
-            running: true,
+            running: false,
             cpu: Cpu::default(),
             last_frame_time: 0.,
             frame_rate: 0.,

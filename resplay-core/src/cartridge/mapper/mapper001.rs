@@ -3,18 +3,49 @@ use crate::cartridge::{Bank, KbUnit, Mapper, Mirroring};
 /// Shift bit to 0b0010_0000
 const SHIFT_CHECK_BIT_POS: u8 = 5;
 
+#[derive(Clone, Copy, Debug, Default, serde::Serialize, serde::Deserialize)]
+enum PrgBankMode {
+    /// switch 32 kb
+    #[default]
+    One,
+    /// Fix first 16kb bank at 0x8000, switch 16kb bank at 0xc000
+    Two,
+    /// Fix last 16kb bank at 0xc000, switch 16kb bank at 0x8000
+    Three,
+}
+
 /// INES designation for MMC1 boards
 /// https://www.nesdev.org/wiki/MMC1
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
 pub struct Mapper001 {
     shift_register: u8,
-    control_register: u8,
+    mirroring: Mirroring,
+    prg_bank_mode: PrgBankMode,
+    /// False switch 8kb, true seperate 4kb
+    chr_bank_mode_4kb: bool,
     prg_bank_number: u8,
     chr_bank_number_0: u8,
     chr_bank_number_1: u8,
 }
 
 impl Mapper001 {
+    fn write_control(&mut self, value: u8) {
+        self.mirroring = match value & 0b11 {
+            0 => Mirroring::SingleScreenLow,
+            1 => Mirroring::SingleScreenHigh,
+            2 => Mirroring::Vertical,
+            3 => Mirroring::Horizontal,
+            _ => unreachable!(),
+        };
+        self.prg_bank_mode = match value & 0b01100 {
+            0b00000 | 0b00100 => PrgBankMode::One,
+            0b01000 => PrgBankMode::Two,
+            0b01100 => PrgBankMode::Three,
+            _ => unreachable!(),
+        };
+        self.chr_bank_mode_4kb = value & 0b10000 != 0;
+    }
+
     fn write_load_register(&mut self, address: u16, value: u8) {
         if self.shift_register == 0 {
             // Keep a one there so we can just check bit 0 to check if it has been shifted 5 times
@@ -22,8 +53,7 @@ impl Mapper001 {
         }
 
         if value & 0b1000_0000 != 0 {
-            // Swith to bank mode 3
-            self.control_register |= 0b01100;
+            self.prg_bank_mode = PrgBankMode::Three;
             self.shift_register = 0;
         } else {
             // Shift the new bit just before the old bit
@@ -32,7 +62,7 @@ impl Mapper001 {
             if self.shift_register & 0b1 != 0 {
                 self.shift_register >>= 1;
                 match address {
-                    0x8000..=0x9fff => self.control_register = self.shift_register,
+                    0x8000..=0x9fff => self.write_control(self.shift_register),
                     0xa000..=0xbfff => self.chr_bank_number_0 = self.shift_register,
                     0xc000..=0xdfff => self.chr_bank_number_1 = self.shift_register,
                     0xe000..=0xffff => self.prg_bank_number = self.shift_register,
@@ -51,19 +81,16 @@ impl Mapper for Mapper001 {
     }
 
     fn map_prg_rom(&self, address: u16) -> Option<Bank> {
-        let (bank_8000, bank_c000) = match self.control_register & 0b01100 {
-            // 32 kib mode
-            0b00000 | 0b00100 => half_double_bank(self.prg_bank_number),
-            // 16 kib, 8000 = first bank
-            0b01000 => ((Bank::Number(0)), (Bank::Number(self.prg_bank_number))),
-            // 16 kib, c000 = last bank
-            0b01100 => (Bank::Number(self.prg_bank_number), (Bank::FromLast(0))),
-            _ => unreachable!(),
-        };
-
-        match address {
-            0x8000..=0xbfff => Some(bank_8000),
-            0xc000..=0xffff => Some(bank_c000),
+        match (
+            address / self.prg_rom_bank_size() as u16,
+            self.prg_bank_mode,
+        ) {
+            (2, PrgBankMode::One) => Some(Bank::Number(self.prg_bank_number & !1)),
+            (3, PrgBankMode::One) => Some(Bank::Number(self.prg_bank_number | 1)),
+            (2, PrgBankMode::Two) => Some(Bank::Number(0)),
+            (3, PrgBankMode::Two) => Some(Bank::Number(self.prg_bank_number)),
+            (2, PrgBankMode::Three) => Some(Bank::Number(self.prg_bank_number)),
+            (3, PrgBankMode::Three) => Some(Bank::FromLast(0)),
             _ => None,
         }
     }
@@ -78,41 +105,25 @@ impl Mapper for Mapper001 {
         KbUnit::Four
     }
 
-    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
-        let (bank_0000, bank_1000) = if self.control_register & 0b10000 == 0 {
+    fn map_chr(&self, address: u16) -> Bank {
+        match (
+            address / self.chr_bank_size() as u16,
+            self.chr_bank_mode_4kb,
+        ) {
             // 8 Kib mode
-            half_double_bank(self.chr_bank_number_0)
-        } else {
-            // 4 Kib split mode
-            (
-                Bank::Number(self.chr_bank_number_0),
-                Bank::Number(self.chr_bank_number_1),
-            )
-        };
+            (0, false) => Bank::Number(self.chr_bank_number_0 & !1),
+            (1, false) => Bank::Number(self.chr_bank_number_0 | 1),
 
-        match address {
-            0x0000..=0x0fff => Some(bank_0000),
-            0x1000..=0x1fff => Some(bank_1000),
-            _ => None,
+            // 4 Kib split mode
+            (0, true) => Bank::Number(self.chr_bank_number_0),
+            (1, true) => Bank::Number(self.chr_bank_number_1),
+            _ => unreachable!(),
         }
     }
 
     fn mirroring(&self) -> Option<Mirroring> {
-        Some(match self.control_register & 0b11 {
-            0 => Mirroring::SingleScreenLow,
-            1 => Mirroring::SingleScreenHigh,
-            2 => Mirroring::Vertical,
-            3 => Mirroring::Horizontal,
-            _ => unreachable!(),
-        })
+        Some(self.mirroring)
     }
-}
-
-fn half_double_bank(bank_number: u8) -> (Bank, Bank) {
-    (
-        Bank::Number(bank_number & !1),
-        Bank::Number((bank_number & !1) + 1),
-    )
 }
 
 #[cfg(test)]

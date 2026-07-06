@@ -15,6 +15,7 @@ pub trait Mapper: std::fmt::Debug {
     fn cpu_write(&mut self, address: u16, value: u8) {}
 
     /// Static size of a bank return from map_cpu_read
+    #[inline(always)]
     fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::ThirtyTwo
     }
@@ -41,22 +42,20 @@ pub trait Mapper: std::fmt::Debug {
     fn monitor_ppu(&mut self, address: u16) {}
 
     /// Static size of a bank return from chr_bank_size
+    #[inline(always)]
     fn chr_bank_size(&self) -> KbUnit {
         KbUnit::Eight
     }
 
-    /// Maps the region between 0x0000 and 0x1fff
-    fn map_chr_rom(&self, address: u16) -> Option<Bank> {
-        if let 0x0000..=0x1fff = address {
-            Some(Bank::Number(0))
-        } else {
-            None
-        }
+    /// Maps the range from 0x0000 to 0x1fff
+    fn map_chr(&self, address: u16) -> Bank {
+        Bank::Number(0)
     }
 
-    /// Most mappers have interchangable CHR-ROM and CHR-RAM but some have both and can switch them
-    fn map_chr_ram(&self, address: u16) -> Option<Bank> {
-        self.map_chr_rom(address)
+    #[inline(always)]
+    fn chr_bank_index(&self, address: u16) -> u16 {
+        // And out high bit in case of prg address
+        (address & 0x8000) / self.prg_rom_bank_size() as u16
     }
 
     /// Used to send irq to cpu
@@ -106,10 +105,10 @@ mod test {
     }
 
     fn create_banks_rom(bank_size: usize, banks_values: &[&[u8]]) -> Vec<u8> {
-        let mut rom = vec![0; bank_size * 1024 * banks_values.len()];
+        let mut rom = vec![0; bank_size * banks_values.len()];
         for (i, bank) in banks_values.iter().enumerate() {
             for (j, value) in bank.iter().enumerate() {
-                rom[i * bank_size * 1024 + j] = *value;
+                rom[i * bank_size + j] = *value;
             }
         }
         rom
