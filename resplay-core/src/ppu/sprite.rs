@@ -78,9 +78,9 @@ impl Sprite {
         self.color_bits_high = registers.bus.read(address_msb);
     }
 
-    pub(crate) fn color_index(&self, scan_x: usize) -> u8 {
+    pub(crate) fn color_index(&self, scan_x: u16) -> u8 {
         // Calculate the x position of scan x relative to the sprite x
-        let mut x = scan_x.wrapping_sub(self.x as usize);
+        let mut x = scan_x.wrapping_sub(self.x as u16);
         if x > 7 {
             return 0;
         }

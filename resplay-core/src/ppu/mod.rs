@@ -12,12 +12,12 @@ pub use registers::*;
 pub use sprite::Sprite;
 pub use vram::VramRegister;
 
-pub const WIDTH: usize = 256;
-pub const HEIGHT: usize = 240;
+pub const WIDTH: u16 = 256;
+pub const HEIGHT: u16 = 240;
 pub const MAX_SPRITES_PER_SCAN: usize = 8;
-pub const PRERENDER_SCANLINE: usize = 261;
+pub const PRERENDER_SCANLINE: u16 = 261;
 
-pub type ScreenPixels = FixedArray<[u8; 3], { WIDTH * HEIGHT }>;
+pub type ScreenPixels = FixedArray<[u8; 3], { WIDTH as usize * HEIGHT as usize }>;
 
 pub enum PpuClockReport {
     None,
@@ -55,7 +55,7 @@ pub struct Ppu {
     bg_palette_bits_low: u8,
     bg_palette_bits_high: u8,
 
-    eval_byte_offset: usize,
+    eval_byte_offset: u8,
     /// Buffer of sprites to render for the current scanline
     sprite_buffer: Vec<Sprite>,
 }
@@ -140,8 +140,8 @@ impl Ppu {
         } else {
             0
         };
-        self.screen_pixels[x + self.registers.scanline * WIDTH] =
-            self.get_palette_color(color_index);
+        let i = x + self.registers.scanline * WIDTH;
+        self.screen_pixels[i as usize] = self.get_palette_color(color_index);
     }
 
     // Scanlines when the PPU is actually drawing to the screen
@@ -194,7 +194,7 @@ impl Ppu {
 
     fn clock_sprite_render_line(&mut self) {
         match self.registers.dot {
-            64 => self.eval_byte_offset = self.registers.oam_address as usize,
+            64 => self.eval_byte_offset = self.registers.oam_address,
             // Technically supposed to happen for the entire scanline but do it once at the end for simplicity
             256 if self.registers.scanline != PRERENDER_SCANLINE => self.eval_sprites(),
             261 => {
@@ -208,16 +208,19 @@ impl Ppu {
     /// Populates the sprite buffer for the next scanline and checks SPRITE_OVERFLOW
     fn eval_sprites(&mut self) {
         self.sprite_buffer.clear();
-        let height = self.registers.control.sprite_height() as usize;
+        let height = self.registers.control.sprite_height() as u16;
 
         let mut i = 0;
-        while let Some(sprite) = self.registers.get_oam_sprite(i, self.eval_byte_offset) {
+        while let Some(sprite) = self
+            .registers
+            .get_oam_sprite(i, self.eval_byte_offset as usize)
+        {
             // Add to sprite buffer if sprite part of scanline
             // Note that it's loading sprites for the next scanline so all sprite y is offset by one
             let overflowed =
                 self.sprite_buffer.len() == MAX_SPRITES_PER_SCAN && !self.config.unlimited_sprites;
-            if self.registers.scanline >= sprite.y as usize
-                && self.registers.scanline < sprite.y as usize + height
+            if self.registers.scanline >= sprite.y as u16
+                && self.registers.scanline < sprite.y as u16 + height
             {
                 // Check sprite overflow
                 if overflowed {
@@ -244,7 +247,7 @@ impl Ppu {
         for i in 0..MAX_SPRITES_PER_SCAN.max(self.sprite_buffer.len()) {
             let mut empty_sprite = Sprite::new(&[0xff, 0xff, 0xff, 0xff], 0);
             let sprite = self.sprite_buffer.get_mut(i).unwrap_or(&mut empty_sprite);
-            sprite.load_shift_bits(self.registers.scanline as u16, &mut self.registers);
+            sprite.load_shift_bits(self.registers.scanline, &mut self.registers);
         }
         // Prender scanline still makes same tile fetches but nothing gets rendered
         if self.registers.scanline == PRERENDER_SCANLINE {
@@ -253,7 +256,7 @@ impl Ppu {
     }
 
     /// Returns the index into palette ram for the current pixel of the background (0 means no color/transparent)
-    fn render_bg_pixel(&mut self, scan_x: usize) -> u8 {
+    fn render_bg_pixel(&mut self, scan_x: u16) -> u8 {
         if !self.registers.mask.can_show_background(scan_x) {
             return 0;
         }
@@ -277,7 +280,7 @@ impl Ppu {
     }
 
     /// Returns the palette ram index for the current pixel if a sprite is there or the background based on piority
-    fn render_fg_pixel(&mut self, scan_x: usize, bg_color_index: u8) -> u8 {
+    fn render_fg_pixel(&mut self, scan_x: u16, bg_color_index: u8) -> u8 {
         if self.registers.mask.can_show_sprite(scan_x) {
             for sprite in self.sprite_buffer.iter() {
                 let color_index = sprite.color_index(scan_x);

@@ -67,12 +67,12 @@ impl Mask {
         self.intersects(Mask::RENDER_SPRITE | Mask::RENDER_BACKGROUND)
     }
 
-    pub fn can_show_sprite(&self, scan_x: usize) -> bool {
+    pub fn can_show_sprite(&self, scan_x: u16) -> bool {
         let can_show_leftmost = self.contains(Mask::SHOW_SPRITE_LEFTMOST_8) || scan_x >= 8;
         self.contains(Mask::RENDER_SPRITE) && can_show_leftmost
     }
 
-    pub fn can_show_background(&self, scan_x: usize) -> bool {
+    pub fn can_show_background(&self, scan_x: u16) -> bool {
         let can_show_leftmost = self.contains(Mask::SHOW_BACKGROUND_LEFTMOST_8) || scan_x >= 8;
         self.contains(Mask::RENDER_BACKGROUND) && can_show_leftmost
     }
@@ -88,7 +88,7 @@ bitflags::bitflags! {
 }
 
 /// AKA how many frames before open bus decays to 0
-const OPEN_BUS_DECAY_START: u32 = 30;
+const OPEN_BUS_DECAY_START: u8 = 30;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -105,10 +105,10 @@ pub struct Registers {
     pub oam_data: FixedArray<u8, 256>,
     pub read_buffer: u8,
     pub open_bus: u8,
-    open_bus_decay_counter: u32,
+    open_bus_decay_counter: u8,
 
-    pub scanline: usize,
-    pub dot: usize,
+    pub scanline: u16,
+    pub dot: u16,
     pub frame_count: u32,
 }
 

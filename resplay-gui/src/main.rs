@@ -40,9 +40,7 @@ fn main() {
     use eframe::wasm_bindgen::JsCast;
     eframe::WebLogger::init(log::LevelFilter::Info).ok();
 
-    std::panic::set_hook(Box::new(|info| {
-        log::error!("panic occurred {}", info.to_string());
-    }));
+    std::panic::set_hook(Box::new(|info| log::error!("panic occurred {}", info)));
 
     let web_options = eframe::WebOptions::default();
 

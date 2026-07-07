@@ -40,7 +40,10 @@ pub struct TextureMap(pub std::collections::HashMap<String, Texture>);
 impl TextureMap {
     pub fn update_ppu_texture(&mut self, pixels: &resplay_core::ppu::ScreenPixels) {
         let texture = self.0.entry("ppu_output".into()).or_insert_with(|| {
-            Texture::new([resplay_core::ppu::WIDTH, resplay_core::ppu::HEIGHT]) //
+            Texture::new([
+                resplay_core::ppu::WIDTH as usize,
+                resplay_core::ppu::HEIGHT as usize,
+            ])
         });
 
         texture.update_pixels(
