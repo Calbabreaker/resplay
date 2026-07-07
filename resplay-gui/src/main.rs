@@ -24,7 +24,14 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Resplay",
         eframe::NativeOptions::default(),
-        Box::new(|cc| Ok(Box::new(App::new(cc)))),
+        Box::new(|cc| {
+            let mut app = App::new(cc);
+            if let Some(rom_path) = std::env::args().nth(1) {
+                app.state
+                    .load_file(FileLoadInfo::new("nes", Err(rom_path.into())));
+            }
+            Ok(Box::new(app))
+        }),
     )
 }
 

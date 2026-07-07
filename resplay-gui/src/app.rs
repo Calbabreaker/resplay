@@ -28,7 +28,7 @@ pub struct Preferences {
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
     preferences: Preferences,
-    state: crate::State,
+    pub state: crate::State,
 
     #[serde(skip)]
     audio_stream: Option<cpal::Stream>,
