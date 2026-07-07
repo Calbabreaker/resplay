@@ -8,7 +8,7 @@ pub use mapper::{Mapper, create_mapper};
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Cartridge {
-    banks: CartridgeBanks,
+    pub(crate) banks: CartridgeBanks,
     header: CartridgeHeader,
     mapper: Box<dyn Mapper>,
 }
@@ -113,10 +113,5 @@ impl Cartridge {
 
     pub fn debug_mapper(&self) -> String {
         format!("{:?}", self.mapper)
-    }
-
-    pub fn set_roms(&mut self, other: Cartridge) {
-        self.banks.prg_rom = other.banks.prg_rom;
-        self.banks.chr_rom = other.banks.chr_rom;
     }
 }

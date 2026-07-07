@@ -1,4 +1,18 @@
-use crate::{Hotkey, audio::setup_audio_stream, egui_util::show_error_dialog, texture::TextureMap};
+use crate::{Hotkey, egui_util::show_error_dialog, texture::TextureMap};
+
+pub struct FileLoadInfo {
+    extension: String,
+    source: Result<Vec<u8>, std::path::PathBuf>,
+}
+
+impl FileLoadInfo {
+    pub fn new(extension: impl Into<String>, source: Result<Vec<u8>, std::path::PathBuf>) -> Self {
+        Self {
+            extension: extension.into(),
+            source,
+        }
+    }
+}
 
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -9,9 +23,8 @@ pub struct State {
     pub texture_map: TextureMap,
     #[serde(skip)]
     pub quick_saves: std::collections::HashMap<u8, Vec<u8>>,
-    #[serde(skip)]
-    pub audio_stream: Option<cpal::Stream>,
 
+    pub recent_rom_paths: Vec<std::path::PathBuf>,
     pub ui_render_time: f32,
     pub selected_quick_save: u8,
 }
@@ -34,34 +47,55 @@ impl State {
         }
     }
 
-    pub fn setup_audio_stream(&mut self) {
-        match setup_audio_stream(&mut self.emu) {
-            Ok(stream) => self.audio_stream = Some(stream),
-            Err(err) => show_error_dialog("Failed to initialize audio", format!("{err}")),
-        }
-    }
+    pub fn load_file(&mut self, info: FileLoadInfo) {
+        let mut loaded_file_path = None;
+        let data = match info.source {
+            Ok(bytes) => bytes,
+            Err(path) => match std::fs::read(&path) {
+                Ok(bytes) => {
+                    loaded_file_path = Some(path);
+                    bytes
+                }
+                Err(err) => return show_error_dialog("Failed to load file", format!("{err}")),
+            },
+        };
 
-    /// Load a nes rom into the emulator
-    pub fn load_nes_rom(&mut self, data: &[u8]) {
-        if let Err(err) = self.emu.load_nes_rom(data) {
-            show_error_dialog("Failed to load NES ROM", format!("{err}"));
-        } else {
-            log::trace!(
-                "Loaded cartridge with header: {:?}",
-                self.emu.cartridge().unwrap().header()
-            );
-            self.emu.running = true;
+        match info.extension.split('.').next_back().unwrap_or_default() {
+            "nes" => {
+                if let Err(err) = self.emu.load_nes_rom(&data[..]) {
+                    show_error_dialog("Failed to load NES ROM", format!("{err}"));
+                } else {
+                    log::trace!(
+                        "Loaded cartridge with header: {:?}",
+                        self.emu.cartridge().unwrap().header()
+                    );
+                    self.emu.running = true;
+                    // Put the file in recent files if we loaded sucessfully
+                    if let Some(path) = loaded_file_path {
+                        // Make sure added path is on top
+                        self.recent_rom_paths.retain(|x| *x != path);
+                        self.recent_rom_paths.insert(0, path.clone());
+                        self.recent_rom_paths.truncate(20);
+                    }
+                }
+            }
+            "resav" => {
+                if let Err(err) = self.emu.load_state(&data) {
+                    show_error_dialog("Failed to load state", format!("{err}"));
+                }
+            }
+            name => crate::egui_util::show_error_dialog(
+                "Unknown file extension",
+                format!("Unrecognised file extension with {name}"),
+            ),
         }
     }
 
     pub fn do_hotkey(&mut self, hotkey: Hotkey) {
         match hotkey {
-            Hotkey::SoftReset => {
+            Hotkey::Reset => {
                 self.emu.cpu.reset();
                 self.emu.running = true;
-            }
-            Hotkey::HardReset => {
-                self.emu.load_cpu(resplay_core::Cpu::default());
             }
             Hotkey::PauseResume => self.emu.running = !self.emu.running,
             Hotkey::Step => {

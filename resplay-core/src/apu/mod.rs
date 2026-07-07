@@ -55,7 +55,7 @@ pub struct Apu {
     frame_counter: FrameCounter,
 
     #[serde(skip)]
-    sender: Option<SampleSender>,
+    pub(crate) sender: Option<SampleSender>,
     #[serde(skip)]
     pub speed_scale: f32,
 }
@@ -101,19 +101,9 @@ impl Apu {
     pub(crate) fn reset(&mut self) {
         self.channels.set_enabled(Status::empty());
     }
-
-    pub fn set_sample_buffer(&mut self, sample_rate: f32, buffer_prod: ringbuf::HeapProd<f32>) {
-        self.speed_scale = 1.;
-        self.sender = Some(SampleSender::new(sample_rate, buffer_prod));
-    }
-
-    pub fn take_sample_buffer(&mut self) -> Option<(f32, ringbuf::HeapProd<f32>)> {
-        let sender = self.sender.take()?;
-        Some((sender.sample_rate, sender.buffer_prod))
-    }
 }
 
-struct SampleSender {
+pub(crate) struct SampleSender {
     sample_rate: f32,
     buffer_prod: ringbuf::HeapProd<f32>,
     high_pass: OnePoleFilter<true>,
@@ -121,7 +111,7 @@ struct SampleSender {
 }
 
 impl SampleSender {
-    fn new(sample_rate: f32, buffer_prod: ringbuf::HeapProd<f32>) -> Self {
+    pub fn new(sample_rate: f32, buffer_prod: ringbuf::HeapProd<f32>) -> Self {
         Self {
             sample_rate,
             buffer_prod,

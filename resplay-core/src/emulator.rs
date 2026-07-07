@@ -2,6 +2,7 @@ use ringbuf::traits::Split;
 
 use crate::{
     Apu, Cartridge, Controller, Cpu, Ppu,
+    apu::SampleSender,
     cartridge::NesParseError,
     cpu::{CLOCK_SPEED_HZ, CYCLES_PER_FRAME, CpuError},
     ppu::ScreenPixels,
@@ -79,7 +80,7 @@ impl Emulator {
         let size = sample_rate * buffer_length.as_secs_f32();
         let rb = ringbuf::SharedRb::new(size as usize);
         let (prod, cons) = rb.split();
-        self.apu().set_sample_buffer(sample_rate, prod);
+        self.apu().sender = Some(SampleSender::new(sample_rate, prod));
         cons
     }
 
@@ -95,24 +96,17 @@ impl Emulator {
 
     /// Loads the save state while keeping the audio buffer and ROM data the same
     pub fn load_state(&mut self, data: &[u8]) -> postcard::Result<()> {
-        let cpu = postcard::from_bytes(data)?;
-        self.load_cpu(cpu);
-        Ok(())
-    }
-
-    /// Loads the CPU into self.cpu while keeping the audio buffer and ROM data the same
-    pub fn load_cpu(&mut self, cpu: Cpu) {
         let prev_cart = self.ppu().registers.bus.cartridge.take();
-        let buffer = self.apu().take_sample_buffer();
-        self.cpu = cpu;
+        let sender = self.apu().sender.take();
+        self.cpu = postcard::from_bytes(data)?;
         if let Some(cart) = self.cpu.bus.cartridge_mut()
             && let Some(prev_cart) = prev_cart
         {
-            cart.set_roms(prev_cart);
+            cart.banks.prg_rom = prev_cart.banks.prg_rom;
+            cart.banks.chr_rom = prev_cart.banks.chr_rom;
         }
-        if let Some((sample_rate, prod)) = buffer {
-            self.apu().set_sample_buffer(sample_rate, prod);
-        }
+        self.apu().sender = sender;
+        Ok(())
     }
 
     pub fn frame_rate(&self) -> f32 {

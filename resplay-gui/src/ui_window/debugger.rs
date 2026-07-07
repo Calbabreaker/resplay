@@ -29,7 +29,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut crate::State) {
         }
 
         if ui.button("⟳").clicked() {
-            state.do_hotkey(Hotkey::SoftReset);
+            state.do_hotkey(Hotkey::Reset);
         }
 
         if ui.button("Step").clicked() {

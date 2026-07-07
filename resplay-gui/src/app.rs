@@ -4,8 +4,8 @@ use std::{
 };
 
 use crate::{
-    Action, DEFAULT_ACTION_MAP, Hotkey, KeybindingMap, State, egui_util::show_error_dialog,
-    ui_window::UiWindowKind,
+    Action, DEFAULT_ACTION_MAP, FileLoadInfo, Hotkey, KeybindingMap, State,
+    audio::setup_audio_stream, egui_util::show_error_dialog, ui_window::UiWindowKind,
 };
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -17,42 +17,27 @@ pub struct Preferences {
     pub apu: resplay_core::apu::ApuConfig,
 }
 
-struct FileLoadInfo {
-    name: String,
-    source: Result<Vec<u8>, std::path::PathBuf>,
-}
-
-impl FileLoadInfo {
-    fn new(name: String, source: Result<Vec<u8>, std::path::PathBuf>) -> Self {
-        Self { name, source }
-    }
-
-    fn from_path(filepath: std::path::PathBuf) -> Self {
-        let name = filepath.file_name().unwrap_or_default();
-        Self::new(name.to_string_lossy().to_string(), Err(filepath))
-    }
-}
-
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
     preferences: Preferences,
     state: crate::State,
-    recent_file_paths: Vec<std::path::PathBuf>,
 
     #[serde(skip)]
     file_load_channel: (Sender<FileLoadInfo>, Receiver<FileLoadInfo>),
+    #[serde(skip)]
+    audio_stream: Option<cpal::Stream>,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            recent_file_paths: Vec::new(),
             ui_windows: HashSet::default(),
             preferences: Preferences::default(),
             state: State::default(),
             file_load_channel: std::sync::mpsc::channel(),
+            audio_stream: None,
         }
     }
 }
@@ -60,13 +45,9 @@ impl Default for App {
 impl App {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let mut app: App = cc
-            .storage
+        cc.storage
             .and_then(|storage| eframe::get_value(storage, eframe::APP_KEY))
-            .unwrap_or_default();
-        #[cfg(not(target_arch = "wasm32"))]
-        app.state.setup_audio_stream();
-        app
+            .unwrap_or_default()
     }
 
     fn show_top_bar(&mut self, ui: &mut egui::Ui) {
@@ -76,24 +57,27 @@ impl App {
                 ui.close();
             }
 
-            if ui.button("Save state").clicked() {
-                show_save_file_dialog("save.resav", self.state.emu.save_state());
-            }
-
-            if ui.button("Load state").clicked() {
-                show_load_file_dialog("Resplay save state", "resav", &self.file_load_channel.0);
-            }
-
             #[cfg(not(target_arch = "wasm32"))]
-            ui.menu_button("Recent Files", |ui| {
-                let mut paths = self.recent_file_paths.iter();
+            ui.menu_button("Recent ROMs", |ui| {
+                let mut paths = self.state.recent_rom_paths.iter();
                 let path = paths.find(|path| ui.button(path.to_string_lossy()).clicked());
 
                 if let Some(path) = path {
-                    self.load_file(FileLoadInfo::from_path(path.to_path_buf()));
+                    self.state
+                        .load_file(FileLoadInfo::new("nes", Err(path.to_path_buf())));
                     ui.close();
                 }
             });
+
+            if ui.button("Save state...").clicked() {
+                show_save_file_dialog("save.resav", self.state.emu.save_state());
+                ui.close();
+            }
+
+            if ui.button("Load state...").clicked() {
+                show_load_file_dialog("Resplay save state", "resav", &self.file_load_channel.0);
+                ui.close();
+            }
 
             if ui.button("Preferences...").clicked() {
                 self.ui_windows.insert(UiWindowKind::Preferences);
@@ -125,10 +109,7 @@ impl App {
 
         ui.menu_button("Emulation", |ui| {
             use Hotkey::*;
-            self.show_hotkey_list(
-                ui,
-                &[PauseResume, SoftReset, HardReset, QuickSave, QuickLoad],
-            );
+            self.show_hotkey_list(ui, &[PauseResume, Reset, QuickSave, QuickLoad]);
 
             ui.menu_button("Quick Save Slot", |ui| {
                 for i in 0..9 {
@@ -176,66 +157,27 @@ impl App {
 
         self.preferences.key_bindings.check_key_down(i);
 
-        if let Some(file) = i.raw.dropped_files.pop() {
+        while let Some(file) = i.raw.dropped_files.pop() {
             if let Some(path) = file.path {
-                self.load_file(FileLoadInfo::from_path(path));
+                let ext = path.extension().unwrap_or_default();
+                self.state.load_file(FileLoadInfo::new(
+                    ext.to_string_lossy().to_string(),
+                    Err(path),
+                ));
             } else if let Some(bytes) = file.bytes {
-                self.load_file(FileLoadInfo::new(file.name, Ok(bytes.to_vec())));
+                self.state.load_file(FileLoadInfo::new(
+                    file.name.split(".").last().unwrap_or_default(),
+                    Ok(bytes.to_vec()),
+                ));
             };
         }
-        i.raw.dropped_files.clear();
 
         // Only create the audio stream after an interaction to make sure it plays
-        #[cfg(target_arch = "wasm32")]
-        if i.pointer.any_click() && self.state.audio_stream.is_none() {
-            self.state.setup_audio_stream();
-        }
-    }
-
-    fn load_file(&mut self, info: FileLoadInfo) {
-        let mut loaded_file_path = None;
-        let data = match info.source {
-            Ok(bytes) => bytes,
-            Err(path) => match std::fs::read(&path) {
-                Ok(bytes) => {
-                    loaded_file_path = Some(path);
-                    bytes
-                }
-                Err(err) => return show_error_dialog("Failed to load file", format!("{err}")),
-            },
-        };
-
-        match info.name.split('.').next_back().unwrap_or_default() {
-            "nes" => {
-                if let Err(err) = self.state.emu.load_nes_rom(&data[..]) {
-                    show_error_dialog("Failed to load NES ROM", format!("{err}"));
-                } else {
-                    log::trace!(
-                        "Loaded cartridge with header: {:?}",
-                        self.state.emu.cartridge().unwrap().header()
-                    );
-                    self.state.emu.running = true;
-                }
+        if i.pointer.any_click() && self.audio_stream.is_none() {
+            match setup_audio_stream(&mut self.state.emu) {
+                Ok(stream) => self.audio_stream = Some(stream),
+                Err(err) => show_error_dialog("Failed to initialize audio", format!("{err}")),
             }
-            "resav" => {
-                if let Err(err) = self.state.emu.load_state(&data) {
-                    show_error_dialog("Failed to load state", format!("{err}"));
-                }
-            }
-            name => {
-                return crate::egui_util::show_error_dialog(
-                    "Unknown file extension",
-                    format!("Unrecognised file extension with {name}"),
-                );
-            }
-        }
-
-        // Put the file in recent files if we loaded sucessfully
-        if let Some(path) = loaded_file_path {
-            // Make sure added path is on top
-            self.recent_file_paths.retain(|x| *x != path);
-            self.recent_file_paths.insert(0, path.clone());
-            self.recent_file_paths.truncate(20);
         }
     }
 }
@@ -248,7 +190,7 @@ impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         ctx.input_mut(|i| self.check_input(i));
         if let Ok(info) = self.file_load_channel.1.try_recv() {
-            self.load_file(info);
+            self.state.load_file(info);
         }
 
         self.state.emu.ppu().config = self.preferences.ppu.clone();
@@ -296,9 +238,9 @@ fn show_load_file_dialog(
             .await
         {
             #[cfg(not(target_arch = "wasm32"))]
-            let info = FileLoadInfo::from_path(file.path().to_path_buf());
+            let info = FileLoadInfo::new(extension, Err(file.path().to_path_buf()));
             #[cfg(target_arch = "wasm32")]
-            let info = FileLoadInfo::new(file.file_name(), Ok(file.read().await));
+            let info = FileLoadInfo::new(extension, Ok(file.read().await));
             sender.send(info).unwrap();
         }
     })
@@ -310,10 +252,9 @@ fn show_save_file_dialog(filename: &'static str, data: Vec<u8>) {
             .set_file_name(filename)
             .save_file()
             .await
+            && let Err(err) = file.write(data.as_slice()).await
         {
-            if let Err(err) = file.write(data.as_slice()).await {
-                show_error_dialog("Failed to save file", format!("{err}"));
-            }
+            show_error_dialog("Failed to save file", format!("{err}"));
         }
     });
 }

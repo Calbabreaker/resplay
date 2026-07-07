@@ -5,8 +5,7 @@ use resplay_core::controller::Button;
 #[derive(PartialEq, Eq, serde::Serialize, serde::Deserialize, Clone, Hash, Debug, Copy)]
 pub enum Hotkey {
     PauseResume,
-    SoftReset,
-    HardReset,
+    Reset,
     Step,
     NextFrame,
     QuickSave,
@@ -26,10 +25,9 @@ impl Action {
                 format!("Controller {number} {}", button.name())
             }
             Self::Hotkey(hotkey) => match hotkey {
-                Hotkey::HardReset => "Hard reset".to_owned(),
                 Hotkey::NextFrame => "Step next frame".to_owned(),
                 Hotkey::PauseResume => "Pause/Resume".to_owned(),
-                Hotkey::SoftReset => "Soft reset".to_owned(),
+                Hotkey::Reset => "Reset".to_owned(),
                 Hotkey::Step => "Step Instruction".to_owned(),
                 Hotkey::QuickSave => "Quick Save".to_owned(),
                 Hotkey::QuickLoad => "Quick Load".to_owned(),
@@ -53,8 +51,7 @@ pub static DEFAULT_ACTION_MAP: LazyLock<KeyActionMap> = LazyLock::new(|| {
     use egui::Key::*;
     let mapping = [
         (Action::Hotkey(PauseResume), F1),
-        (Action::Hotkey(SoftReset), F2),
-        (Action::Hotkey(HardReset), F3),
+        (Action::Hotkey(Reset), F2),
         (Action::Hotkey(Step), OpenBracket),
         (Action::Hotkey(QuickSave), W),
         (Action::Hotkey(QuickLoad), O),
