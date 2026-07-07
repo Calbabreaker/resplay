@@ -19,5 +19,16 @@
     <body>
         <p id="loading">Loading...</p>
         <canvas id="canvas"></canvas>
+        <script type="module">
+            addEventListener("TrunkApplicationStarted", async (event) => {
+                const romPath = new URLSearchParams(location.search).get("rom");
+                if (romPath) {
+                    const response = await fetch(romPath);
+                    const bytes = await response.arrayBuffer();
+                    window.wasmBindings.load_nes_rom(new Uint8Array(bytes));
+                }
+                document.getElementById("loading").remove();
+            });
+        </script>
     </body>
 </html>

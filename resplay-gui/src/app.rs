@@ -1,12 +1,18 @@
 use std::{
     collections::HashSet,
+    rc::Rc,
     sync::mpsc::{Receiver, Sender},
 };
 
 use crate::{
-    Action, DEFAULT_ACTION_MAP, FileLoadInfo, Hotkey, KeybindingMap, State,
-    audio::setup_audio_stream, egui_util::show_error_dialog, ui_window::UiWindowKind,
+    Action, DEFAULT_ACTION_MAP, FileLoadInfo, Hotkey, KeybindingMap, audio::setup_audio_stream,
+    egui_util::show_error_dialog, ui_window::UiWindowKind,
 };
+
+thread_local! {
+    pub static FILE_LOAD_CHANNEL: Rc<(Sender<FileLoadInfo>, Receiver<FileLoadInfo>)>
+        = Rc::new(std::sync::mpsc::channel());
+}
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 #[serde(default)]
@@ -17,7 +23,7 @@ pub struct Preferences {
     pub apu: resplay_core::apu::ApuConfig,
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
@@ -25,21 +31,7 @@ pub struct App {
     state: crate::State,
 
     #[serde(skip)]
-    file_load_channel: (Sender<FileLoadInfo>, Receiver<FileLoadInfo>),
-    #[serde(skip)]
     audio_stream: Option<cpal::Stream>,
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            ui_windows: HashSet::default(),
-            preferences: Preferences::default(),
-            state: State::default(),
-            file_load_channel: std::sync::mpsc::channel(),
-            audio_stream: None,
-        }
-    }
 }
 
 impl App {
@@ -53,7 +45,7 @@ impl App {
     fn show_top_bar(&mut self, ui: &mut egui::Ui) {
         ui.menu_button("File", |ui| {
             if ui.button("Open ROM...").clicked() {
-                show_load_file_dialog("NES ROM", "nes", &self.file_load_channel.0);
+                show_load_file_dialog("NES ROM", "nes");
                 ui.close();
             }
 
@@ -75,7 +67,7 @@ impl App {
             }
 
             if ui.button("Load state...").clicked() {
-                show_load_file_dialog("Resplay save state", "resav", &self.file_load_channel.0);
+                show_load_file_dialog("Resplay save state", "resav");
                 ui.close();
             }
 
@@ -189,9 +181,11 @@ impl eframe::App for App {
 
     fn logic(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         ctx.input_mut(|i| self.check_input(i));
-        if let Ok(info) = self.file_load_channel.1.try_recv() {
-            self.state.load_file(info);
-        }
+        FILE_LOAD_CHANNEL.with(|channel| {
+            if let Ok(info) = channel.1.try_recv() {
+                self.state.load_file(info);
+            }
+        });
 
         self.state.emu.ppu().config = self.preferences.ppu.clone();
         self.state.emu.apu().config = self.preferences.apu.clone();
@@ -225,12 +219,8 @@ impl eframe::App for App {
     }
 }
 
-fn show_load_file_dialog(
-    type_name: &'static str,
-    extension: &'static str,
-    sender: &Sender<FileLoadInfo>,
-) {
-    let sender = sender.clone();
+fn show_load_file_dialog(type_name: &'static str, extension: &'static str) {
+    let sender = FILE_LOAD_CHANNEL.with(|channel| channel.0.clone());
     run_future(async move {
         if let Some(file) = rfd::AsyncFileDialog::new()
             .add_filter(type_name, &[extension])

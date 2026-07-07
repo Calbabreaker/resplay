@@ -47,22 +47,23 @@ fn main() {
             .dyn_into::<web_sys::HtmlCanvasElement>()
             .unwrap();
 
-        let result = eframe::WebRunner::new()
+        if let Err(err) = eframe::WebRunner::new()
             .start(
                 canvas,
                 web_options,
                 Box::new(|cc| Ok(Box::new(App::new(cc)))),
             )
-            .await;
-
-        // Remove the loading text
-        let loading_element = document.get_element_by_id("loading").unwrap();
-        match result {
-            Ok(_) => loading_element.remove(),
-            Err(e) => {
-                loading_element.set_inner_html("Failed to load app :(");
-                log::error!("Failed to start eframe: {e:?}");
-            }
+            .await
+        {
+            crate::egui_util::show_error_dialog("Failed to start egui", format!("{err:?}"));
         }
+    });
+}
+
+#[cfg(target_arch = "wasm32")]
+#[wasm_bindgen::prelude::wasm_bindgen]
+pub fn load_nes_rom(bytes: Vec<u8>) {
+    FILE_LOAD_CHANNEL.with(|channel| {
+        channel.0.send(FileLoadInfo::new("nes", Ok(bytes))).unwrap();
     });
 }

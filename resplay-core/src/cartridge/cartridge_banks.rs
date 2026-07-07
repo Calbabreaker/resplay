@@ -85,7 +85,7 @@ impl MemoryBanks {
         };
         let bank_start = self.bank_size * bank_number;
         let bank_offset = offset as usize & (self.bank_size - 1);
-        (bank_start + bank_offset) & (self.bytes.len() - 1)
+        (bank_start + bank_offset) & (self.bytes.len().saturating_sub(1))
     }
 }
 
