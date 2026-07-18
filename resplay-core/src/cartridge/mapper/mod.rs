@@ -52,12 +52,6 @@ pub trait Mapper: std::fmt::Debug {
         Bank::Number(0)
     }
 
-    #[inline(always)]
-    fn chr_bank_index(&self, address: u16) -> u16 {
-        // And out high bit in case of prg address
-        (address & 0x8000) / self.prg_rom_bank_size() as u16
-    }
-
     /// Used to send irq to cpu
     fn irq_status(&self) -> bool {
         false

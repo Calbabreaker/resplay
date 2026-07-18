@@ -21,7 +21,7 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, PartialEq, Debug)]
 #[serde(default)]
 pub struct ApuConfig {
     pub volume: f32,

@@ -1,12 +1,15 @@
-use crate::{Hotkey, egui_util::show_error_dialog, texture::TextureMap};
+use crate::{Hotkey, Preferences, egui_util::show_error_dialog, texture::TextureMap};
 
 pub struct FileLoadInfo {
     extension: String,
-    source: Result<Vec<u8>, std::path::PathBuf>,
+    source: Result<Box<[u8]>, std::path::PathBuf>,
 }
 
 impl FileLoadInfo {
-    pub fn new(extension: impl Into<String>, source: Result<Vec<u8>, std::path::PathBuf>) -> Self {
+    pub fn new(
+        extension: impl Into<String>,
+        source: Result<Box<[u8]>, std::path::PathBuf>,
+    ) -> Self {
         Self {
             extension: extension.into(),
             source,
@@ -22,19 +25,27 @@ pub struct State {
     #[serde(skip)]
     pub texture_map: TextureMap,
     #[serde(skip)]
-    pub quick_saves: std::collections::HashMap<u8, Vec<u8>>,
+    pub quick_saves: std::collections::HashMap<u8, Box<[u8]>>,
+    #[serde(skip)]
+    pub ui_render_time: f32,
 
     pub recent_rom_paths: Vec<std::path::PathBuf>,
-    pub ui_render_time: f32,
     pub selected_quick_save: u8,
 }
 
 impl State {
-    pub fn update_emulation(&mut self, ctx: &egui::Context) {
+    pub fn update_emulation(&mut self, ctx: &egui::Context, prefs: &Preferences) {
+        self.emu.ppu().config = prefs.ppu;
+        self.emu.apu().config = prefs.apu;
+
         if let Err(err) = self.emu.update(ctx.time() as f32, |pixels| {
             self.texture_map.update_ppu_texture(pixels)
-        }) {
-            log::warn!("CPU halted: {err}");
+        }) && !prefs.continue_on_halt
+        {
+            show_error_dialog(
+                "CPU halted (can be disabled in preferences)",
+                format!("{err}"),
+            );
             self.emu.running = false;
         }
 
@@ -54,13 +65,13 @@ impl State {
             Err(path) => match std::fs::read(&path) {
                 Ok(bytes) => {
                     loaded_file_path = Some(path);
-                    bytes
+                    bytes.into_boxed_slice()
                 }
                 Err(err) => return show_error_dialog("Failed to load file", format!("{err}")),
             },
         };
 
-        match info.extension.split('.').next_back().unwrap_or_default() {
+        match info.extension.as_str() {
             "nes" => {
                 if let Err(err) = self.emu.load_nes_rom(&data[..]) {
                     show_error_dialog("Failed to load NES ROM", format!("{err}"));

@@ -21,17 +21,17 @@ fn main() -> eframe::Result {
         .filter_level(log::LevelFilter::Info)
         .init();
 
+    FILE_LOAD_CHANNEL.with(|channel| {
+        if let Some(rom_path) = std::env::args().nth(1) {
+            let path = Err(rom_path.into());
+            channel.0.send(FileLoadInfo::new("nes", path)).unwrap();
+        }
+    });
+
     eframe::run_native(
-        "Resplay",
+        "resplay",
         eframe::NativeOptions::default(),
-        Box::new(|cc| {
-            let mut app = App::new(cc);
-            if let Some(rom_path) = std::env::args().nth(1) {
-                app.state
-                    .load_file(FileLoadInfo::new("nes", Err(rom_path.into())));
-            }
-            Ok(Box::new(app))
-        }),
+        Box::new(|cc| Ok(Box::new(App::new(cc)))),
     )
 }
 

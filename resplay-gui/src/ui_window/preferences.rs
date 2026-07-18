@@ -33,6 +33,11 @@ pub fn show(ui: &mut egui::Ui, prefs: &mut Preferences) {
                 );
                 ui.checkbox(&mut prefs.allow_illegal_press, "");
                 ui.end_row();
+                ui.label("Continue on HLT").on_hover_text(
+                    "Don't stop running when a HLT instruction is encountered or in any other circumstances where the system would crash",
+                );
+                ui.checkbox(&mut prefs.continue_on_halt, "");
+                ui.end_row();
             });
         }
         Tab::Audio => {

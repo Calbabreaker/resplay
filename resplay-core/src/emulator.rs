@@ -90,14 +90,14 @@ impl Emulator {
         Ok(())
     }
 
-    pub fn save_state(&mut self) -> Vec<u8> {
-        postcard::to_allocvec(&self.cpu).unwrap()
+    pub fn save_state(&mut self) -> Box<[u8]> {
+        postcard::to_allocvec(&self.cpu).unwrap().into_boxed_slice()
     }
 
     /// Loads the save state while keeping the audio buffer and ROM data the same
     pub fn load_state(&mut self, data: &[u8]) -> postcard::Result<()> {
         let prev_cart = self.ppu().registers.bus.cartridge.take();
-        let sender = self.apu().sender.take();
+        let prev_sender = self.apu().sender.take();
         self.cpu = postcard::from_bytes(data)?;
         if let Some(cart) = self.cpu.bus.cartridge_mut()
             && let Some(prev_cart) = prev_cart
@@ -105,7 +105,7 @@ impl Emulator {
             cart.banks.prg_rom = prev_cart.banks.prg_rom;
             cart.banks.chr_rom = prev_cart.banks.chr_rom;
         }
-        self.apu().sender = sender;
+        self.apu().sender = prev_sender;
         Ok(())
     }
 

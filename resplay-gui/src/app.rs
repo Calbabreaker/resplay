@@ -19,6 +19,7 @@ thread_local! {
 pub struct Preferences {
     pub key_bindings: KeybindingMap,
     pub allow_illegal_press: bool,
+    pub continue_on_halt: bool,
     pub ppu: resplay_core::ppu::PpuConfig,
     pub apu: resplay_core::apu::ApuConfig,
 }
@@ -28,7 +29,7 @@ pub struct Preferences {
 pub struct App {
     ui_windows: HashSet<UiWindowKind>,
     preferences: Preferences,
-    pub state: crate::State,
+    state: crate::State,
 
     #[serde(skip)]
     audio_stream: Option<cpal::Stream>,
@@ -103,7 +104,7 @@ impl App {
             use Hotkey::*;
             self.show_hotkey_list(ui, &[PauseResume, Reset, QuickSave, QuickLoad]);
 
-            ui.menu_button("Quick Save Slot", |ui| {
+            ui.menu_button("Quick save slot", |ui| {
                 for i in 0..9 {
                     let mut text = egui::RichText::new(format!("Slot {i}"));
                     if i == self.state.selected_quick_save {
@@ -159,13 +160,15 @@ impl App {
             } else if let Some(bytes) = file.bytes {
                 self.state.load_file(FileLoadInfo::new(
                     file.name.split(".").last().unwrap_or_default(),
-                    Ok(bytes.to_vec()),
+                    Ok(bytes.to_vec().into_boxed_slice()),
                 ));
             };
         }
 
         // Only create the audio stream after an interaction to make sure it plays
-        if i.pointer.any_click() && self.audio_stream.is_none() {
+        if self.audio_stream.is_none()
+            && (i.pointer.any_click() || cfg!(not(target_arch = "wasm32")))
+        {
             match setup_audio_stream(&mut self.state.emu) {
                 Ok(stream) => self.audio_stream = Some(stream),
                 Err(err) => show_error_dialog("Failed to initialize audio", format!("{err}")),
@@ -187,10 +190,7 @@ impl eframe::App for App {
             }
         });
 
-        self.state.emu.ppu().config = self.preferences.ppu.clone();
-        self.state.emu.apu().config = self.preferences.apu.clone();
-
-        self.state.update_emulation(ctx);
+        self.state.update_emulation(ctx, &self.preferences);
     }
 
     /// Called each time the UI needs repainting, which may be many times per second.
@@ -236,13 +236,13 @@ fn show_load_file_dialog(type_name: &'static str, extension: &'static str) {
     })
 }
 
-fn show_save_file_dialog(filename: &'static str, data: Vec<u8>) {
+fn show_save_file_dialog(filename: &'static str, data: Box<[u8]>) {
     run_future(async move {
         if let Some(file) = rfd::AsyncFileDialog::new()
             .set_file_name(filename)
             .save_file()
             .await
-            && let Err(err) = file.write(data.as_slice()).await
+            && let Err(err) = file.write(&data).await
         {
             show_error_dialog("Failed to save file", format!("{err}"));
         }

@@ -24,7 +24,7 @@ pub enum PpuClockReport {
     Nmi,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug, Default)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Debug, Default, Copy)]
 #[serde(default)]
 pub struct PpuConfig {
     pub unlimited_sprites: bool,
