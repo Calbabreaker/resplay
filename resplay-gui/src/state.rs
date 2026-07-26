@@ -1,15 +1,17 @@
 use crate::{Hotkey, Preferences, egui_util::show_error_dialog, texture::TextureMap};
 
+pub enum FileSource {
+    Bytes(Box<[u8]>),
+    Path(std::path::PathBuf),
+}
+
 pub struct FileLoadInfo {
     extension: String,
-    source: Result<Box<[u8]>, std::path::PathBuf>,
+    source: FileSource,
 }
 
 impl FileLoadInfo {
-    pub fn new(
-        extension: impl Into<String>,
-        source: Result<Box<[u8]>, std::path::PathBuf>,
-    ) -> Self {
+    pub fn new(extension: impl Into<String>, source: FileSource) -> Self {
         Self {
             extension: extension.into(),
             source,
@@ -61,8 +63,8 @@ impl State {
     pub fn load_file(&mut self, info: FileLoadInfo) {
         let mut loaded_file_path = None;
         let data = match info.source {
-            Ok(bytes) => bytes,
-            Err(path) => match std::fs::read(&path) {
+            FileSource::Bytes(bytes) => bytes,
+            FileSource::Path(path) => match std::fs::read(&path) {
                 Ok(bytes) => {
                     loaded_file_path = Some(path);
                     bytes.into_boxed_slice()

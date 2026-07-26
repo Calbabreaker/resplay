@@ -45,17 +45,11 @@ impl<'a> Disassembler<'a> {
             AddrMode::ZeroPageX => write!(f, "{},X", self.next_byte())?,
             AddrMode::ZeroPageY => write!(f, "{},Y", self.next_byte())?,
             AddrMode::Absolute => write!(f, "{}", self.next_word())?,
-            AddrMode::AbsoluteX | AddrMode::AbsoluteXForceDummy => {
-                write!(f, "{},X", self.next_word())?
-            }
-            AddrMode::AbsoluteY | AddrMode::AbsoluteYForceDummy => {
-                write!(f, "{},Y", self.next_word())?
-            }
+            AddrMode::AbsoluteX(_) => write!(f, "{},X", self.next_word())?,
+            AddrMode::AbsoluteY(_) => write!(f, "{},Y", self.next_word())?,
             AddrMode::Indirect => write!(f, "[{}]", self.next_word())?,
             AddrMode::IndirectX => write!(f, "[{},X]", self.next_byte())?,
-            AddrMode::IndirectY | AddrMode::IndirectYForceDummy => {
-                write!(f, "[{}],Y", self.next_byte())?
-            }
+            AddrMode::IndirectY(_) => write!(f, "[{}],Y", self.next_byte())?,
             AddrMode::Relative => {
                 let offset = self.next_byte().0 as i8;
                 let address = HexDisplay((self.current_address as i16 + offset as i16) as u16);

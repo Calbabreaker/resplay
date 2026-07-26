@@ -21,10 +21,10 @@ fn main() -> eframe::Result {
         .filter_level(log::LevelFilter::Info)
         .init();
 
-    FILE_LOAD_CHANNEL.with(|channel| {
+    FILE_LOAD_CHANNEL.with(|(sender, _)| {
         if let Some(rom_path) = std::env::args().nth(1) {
-            let path = Err(rom_path.into());
-            channel.0.send(FileLoadInfo::new("nes", path)).unwrap();
+            let source = FileSource::Path(rom_path.into());
+            sender.send(FileLoadInfo::new("nes", source)).unwrap();
         }
     });
 
@@ -67,8 +67,9 @@ fn main() {
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen::prelude::wasm_bindgen]
-pub fn load_nes_rom(bytes: Vec<u8>) {
-    FILE_LOAD_CHANNEL.with(|channel| {
-        channel.0.send(FileLoadInfo::new("nes", Ok(bytes))).unwrap();
+pub fn load_nes_rom(bytes: Box<[u8]>) {
+    FILE_LOAD_CHANNEL.with(|(sender, _)| {
+        let source = FileSource::Bytes(bytes);
+        channel.send(FileLoadInfo::new("nes", source)).unwrap();
     });
 }

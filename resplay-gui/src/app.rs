@@ -5,13 +5,13 @@ use std::{
 };
 
 use crate::{
-    Action, DEFAULT_ACTION_MAP, FileLoadInfo, Hotkey, KeybindingMap, audio::setup_audio_stream,
-    egui_util::show_error_dialog, ui_window::UiWindowKind,
+    Action, DEFAULT_ACTION_MAP, FileLoadInfo, FileSource, Hotkey, KeybindingMap,
+    audio::setup_audio_stream, egui_util::show_error_dialog, ui_window::UiWindowKind,
 };
 
 thread_local! {
-    pub static FILE_LOAD_CHANNEL: Rc<(Sender<FileLoadInfo>, Receiver<FileLoadInfo>)>
-        = Rc::new(std::sync::mpsc::channel());
+    pub static FILE_LOAD_CHANNEL: (Sender<FileLoadInfo>, Receiver<FileLoadInfo>)
+        = std::sync::mpsc::channel();
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -56,8 +56,10 @@ impl App {
                 let path = paths.find(|path| ui.button(path.to_string_lossy()).clicked());
 
                 if let Some(path) = path {
-                    self.state
-                        .load_file(FileLoadInfo::new("nes", Err(path.to_path_buf())));
+                    self.state.load_file(FileLoadInfo::new(
+                        "nes",
+                        FileSource::Path(path.to_path_buf()),
+                    ));
                     ui.close();
                 }
             });
@@ -155,12 +157,12 @@ impl App {
                 let ext = path.extension().unwrap_or_default();
                 self.state.load_file(FileLoadInfo::new(
                     ext.to_string_lossy().to_string(),
-                    Err(path),
+                    FileSource::Path(path),
                 ));
             } else if let Some(bytes) = file.bytes {
                 self.state.load_file(FileLoadInfo::new(
                     file.name.split(".").last().unwrap_or_default(),
-                    Ok(bytes.to_vec().into_boxed_slice()),
+                    FileSource::Bytes(bytes.to_vec().into_boxed_slice()),
                 ));
             };
         }
@@ -228,9 +230,12 @@ fn show_load_file_dialog(type_name: &'static str, extension: &'static str) {
             .await
         {
             #[cfg(not(target_arch = "wasm32"))]
-            let info = FileLoadInfo::new(extension, Err(file.path().to_path_buf()));
+            let info = FileLoadInfo::new(extension, FileSource::Path(file.path().to_path_buf()));
             #[cfg(target_arch = "wasm32")]
-            let info = FileLoadInfo::new(extension, Ok(file.read().await));
+            let info = FileLoadInfo::new(
+                extension,
+                FileSource::Bytes(file.read().await.into_boxed_slice()),
+            );
             sender.send(info).unwrap();
         }
     })

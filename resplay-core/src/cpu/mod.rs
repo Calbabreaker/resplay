@@ -109,14 +109,8 @@ impl Cpu {
         self.bus.read_u16(pc)
     }
 
-    fn address_add_offset(&mut self, address: u16, offset: u8, mode: AddrMode) -> u16 {
+    fn address_add_offset(&mut self, address: u16, offset: u8, force_dummy: bool) -> u16 {
         let address_offset = address.wrapping_add(offset as u16);
-        let force_dummy = matches!(
-            mode,
-            AddrMode::AbsoluteYForceDummy
-                | AddrMode::AbsoluteXForceDummy
-                | AddrMode::IndirectYForceDummy
-        );
         // The CPU will first add the offset with the low byte of the address and try to read from there
         // Then it will check if the page has been crossed and read with the correct high byte if needs be
         if force_dummy || address_offset & 0xff00 != address & 0xff00 {
@@ -148,13 +142,13 @@ impl Cpu {
                 self.read_at_pc().wrapping_add(self.y) as u16
             }
             AddrMode::Absolute => self.read_u16_at_pc(),
-            AddrMode::AbsoluteX | AddrMode::AbsoluteXForceDummy => {
+            AddrMode::AbsoluteX(force_dummy) => {
                 let address = self.read_u16_at_pc();
-                self.address_add_offset(address, self.x, mode)
+                self.address_add_offset(address, self.x, force_dummy)
             }
-            AddrMode::AbsoluteY | AddrMode::AbsoluteYForceDummy => {
+            AddrMode::AbsoluteY(force_dummy) => {
                 let address = self.read_u16_at_pc();
-                self.address_add_offset(address, self.y, mode)
+                self.address_add_offset(address, self.y, force_dummy)
             }
             AddrMode::Indirect => {
                 let indirect_address = self.read_u16_at_pc();
@@ -165,10 +159,10 @@ impl Cpu {
                 self.bus.clock();
                 self.bus.read_u16_wrapped(indirect_address as u16)
             }
-            AddrMode::IndirectY | AddrMode::IndirectYForceDummy => {
+            AddrMode::IndirectY(force_dummy) => {
                 let indirect_address = self.read_at_pc();
                 let address = self.bus.read_u16_wrapped(indirect_address as u16);
-                self.address_add_offset(address, self.y, mode)
+                self.address_add_offset(address, self.y, force_dummy)
             }
             AddrMode::Relative => {
                 let offset = self.read_at_pc() as i8 as u16;
