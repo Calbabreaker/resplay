@@ -42,9 +42,9 @@ pub enum Bank {
     FromLast(u8),
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct MemoryBanks {
-    pub bytes: Vec<u8>,
+    pub bytes: Box<[u8]>,
     bank_size: usize,
     num_banks: usize,
 }
@@ -59,7 +59,7 @@ impl MemoryBanks {
         }
         Self {
             num_banks,
-            bytes,
+            bytes: bytes.into_boxed_slice(),
             bank_size,
         }
     }
@@ -89,7 +89,8 @@ impl MemoryBanks {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
+#[serde(default)]
 pub struct CartridgeBanks {
     pub prg_ram: MemoryBanks,
     #[serde(skip)]

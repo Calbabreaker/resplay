@@ -3,12 +3,12 @@ use crate::cartridge::{Bank, KbUnit, Mapper};
 /// INES designation for UxROM boards
 /// https://www.nesdev.org/wiki/UxROM
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Mapper002 {
+pub struct Mapper2 {
     bank_number_low: u8,
 }
 
 #[typetag::serde]
-impl Mapper for Mapper002 {
+impl Mapper for Mapper2 {
     fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen
     }

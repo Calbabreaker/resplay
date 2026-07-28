@@ -1,6 +1,5 @@
 use std::{
     collections::HashSet,
-    rc::Rc,
     sync::mpsc::{Receiver, Sender},
 };
 

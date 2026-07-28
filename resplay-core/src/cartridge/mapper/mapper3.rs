@@ -3,12 +3,12 @@ use crate::cartridge::{Bank, Mapper};
 /// INES designation for CNROM boards
 /// https://www.nesdev.org/wiki/CNROM
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Mapper003 {
+pub struct Mapper3 {
     bank_number: u8,
 }
 
 #[typetag::serde]
-impl Mapper for Mapper003 {
+impl Mapper for Mapper3 {
     fn cpu_write(&mut self, address: u16, value: u8) {
         if let 0x8000..=0xffff = address {
             self.bank_number = value;

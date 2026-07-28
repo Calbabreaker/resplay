@@ -567,7 +567,11 @@ impl Cpu {
         self.bus.write(address, self.a & self.x);
     }
 
-    fn sha(&mut self, mode: AddrMode) {}
+    fn sha(&mut self, mode: AddrMode) {
+        unsafe {
+            std::hint::unreachable_unchecked();
+        }
+    }
 
     fn shs(&mut self, mode: AddrMode) {}
 

@@ -6,7 +6,7 @@ use crate::{
 /// INES designation for MMC3 boards
 /// https://www.nesdev.org/wiki/MMC3
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Mapper004 {
+pub struct Mapper4 {
     mirroring: Mirroring,
     registers: [u8; 8],
     selected_register_index: usize,
@@ -20,7 +20,7 @@ pub struct Mapper004 {
     low_cycles: u8,
 }
 
-impl Mapper004 {
+impl Mapper4 {
     fn signal_scanline(&mut self) {
         if self.irq_reload || self.irq_counter == 0 {
             self.irq_counter = self.irq_latch_value;
@@ -35,22 +35,20 @@ impl Mapper004 {
 }
 
 #[typetag::serde]
-impl Mapper for Mapper004 {
+impl Mapper for Mapper4 {
     fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::Eight
     }
 
     fn map_prg_rom(&self, address: u16) -> Option<Bank> {
-        match (
-            address / self.prg_rom_bank_size() as u16,
-            self.prg_mode_flip,
-        ) {
-            (4, false) | (6, true) => Some(Bank::Number(self.registers[6])),
-            (5, false) | (5, true) => Some(Bank::Number(self.registers[7])),
-            (6, false) | (4, true) => Some(Bank::FromLast(1)),
-            (7, _) => Some(Bank::FromLast(0)),
-            _ => None,
-        }
+        let index = address / self.prg_rom_bank_size() as u16;
+        Some(match (index, self.prg_mode_flip) {
+            (4, false) | (6, true) => Bank::Number(self.registers[6]),
+            (5, false) | (5, true) => Bank::Number(self.registers[7]),
+            (6, false) | (4, true) => Bank::FromLast(1),
+            (7, _) => Bank::FromLast(0),
+            _ => return None,
+        })
     }
 
     fn cpu_write(&mut self, address: u16, value: u8) {

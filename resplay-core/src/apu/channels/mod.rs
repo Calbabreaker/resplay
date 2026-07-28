@@ -20,8 +20,8 @@ pub struct Channels {
 impl Channels {
     pub fn write(&mut self, address: u16, value: u8) {
         std::debug_assert_matches!(address, 0x4000..=0x4013);
-        self.pulse_0.write(address, value, 0);
-        self.pulse_1.write(address, value, 1);
+        self.pulse_0.write(address, value);
+        self.pulse_1.write(address, value);
         self.triangle.write(address, value);
         self.noise.write(address, value);
         self.dmc.write(address, value);

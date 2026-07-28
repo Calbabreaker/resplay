@@ -29,6 +29,7 @@ pub enum Mirroring {
 }
 
 #[derive(Default, Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct CartridgeHeader {
     pub mapper_id: u16,
     pub submapper_id: u8,

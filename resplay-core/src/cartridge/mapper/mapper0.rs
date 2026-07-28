@@ -4,10 +4,10 @@ use crate::cartridge::Mapper;
 /// https://www.nesdev.org/wiki/NROM
 /// No bank switching, maps entire range to the ROM and RAM
 #[derive(Default, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Mapper000 {}
+pub struct Mapper0 {}
 
 #[typetag::serde]
-impl Mapper for Mapper000 {}
+impl Mapper for Mapper0 {}
 
 #[cfg(test)]
 mod test {

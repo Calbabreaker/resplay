@@ -1,27 +1,27 @@
 use crate::cartridge::{Bank, KbUnit, Mirroring};
 
-mod mapper000;
-mod mapper001;
-mod mapper002;
-mod mapper003;
-mod mapper004;
-mod mapper007;
+mod mapper0;
+mod mapper1;
+mod mapper2;
+mod mapper3;
+mod mapper4;
+mod mapper7;
 
 /// Generic trait for underlying circuitry inside a catridge that maps to specific ROM and RAM banks
 /// in a cartridge
-#[typetag::serde]
 #[allow(unused_variables)]
+#[typetag::serde]
 pub trait Mapper: std::fmt::Debug {
     fn cpu_write(&mut self, address: u16, value: u8) {}
 
     /// Static size of a bank return from map_cpu_read
-    #[inline(always)]
     fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::ThirtyTwo
     }
 
-    /// Maps entire range by default
+    /// Maps address to PRG ROM bank
     fn map_prg_rom(&self, address: u16) -> Option<Bank> {
+        // Maps entire range by default
         if let 0x8000..=0xffff = address {
             Some(Bank::Number(0))
         } else {
@@ -29,8 +29,8 @@ pub trait Mapper: std::fmt::Debug {
         }
     }
 
-    /// Most mappers have unmapped memory between 0x6000 and 0x7fff
     fn map_prg_ram(&self, address: u16) -> Option<Bank> {
+        // Most mappers have unmapped memory between 0x6000 and 0x7fff
         if let 0x6000..=0x7fff = address {
             Some(Bank::Number(0))
         } else {
@@ -42,12 +42,11 @@ pub trait Mapper: std::fmt::Debug {
     fn monitor_ppu(&mut self, address: u16) {}
 
     /// Static size of a bank return from chr_bank_size
-    #[inline(always)]
     fn chr_bank_size(&self) -> KbUnit {
         KbUnit::Eight
     }
 
-    /// Maps the range from 0x0000 to 0x1fff
+    /// Maps the range from 0x0000 to 0x1fff to a CHR ROM/RAM bank
     fn map_chr(&self, address: u16) -> Bank {
         Bank::Number(0)
     }
@@ -65,12 +64,12 @@ pub trait Mapper: std::fmt::Debug {
 
 pub fn create_mapper(id: u16) -> Option<Box<dyn Mapper>> {
     Some(match id {
-        0 => Box::new(mapper000::Mapper000::default()),
-        1 => Box::new(mapper001::Mapper001::default()),
-        2 => Box::new(mapper002::Mapper002::default()),
-        3 => Box::new(mapper003::Mapper003::default()),
-        4 => Box::new(mapper004::Mapper004::default()),
-        7 => Box::new(mapper007::Mapper007::default()),
+        0 => Box::new(mapper0::Mapper0::default()),
+        1 => Box::new(mapper1::Mapper1::default()),
+        2 => Box::new(mapper2::Mapper2::default()),
+        3 => Box::new(mapper3::Mapper3::default()),
+        4 => Box::new(mapper4::Mapper4::default()),
+        7 => Box::new(mapper7::Mapper7::default()),
         _ => return None,
     })
 }

@@ -17,7 +17,7 @@ enum PrgBankMode {
 /// INES designation for MMC1 boards
 /// https://www.nesdev.org/wiki/MMC1
 #[derive(Debug, Default, serde::Deserialize, serde::Serialize)]
-pub struct Mapper001 {
+pub struct Mapper1 {
     shift_register: u8,
     mirroring: Mirroring,
     prg_bank_mode: PrgBankMode,
@@ -28,7 +28,7 @@ pub struct Mapper001 {
     chr_bank_number_1: u8,
 }
 
-impl Mapper001 {
+impl Mapper1 {
     fn write_control(&mut self, value: u8) {
         self.mirroring = match value & 0b11 {
             0 => Mirroring::SingleScreenLow,
@@ -75,24 +75,22 @@ impl Mapper001 {
 }
 
 #[typetag::serde]
-impl Mapper for Mapper001 {
+impl Mapper for Mapper1 {
     fn prg_rom_bank_size(&self) -> KbUnit {
         KbUnit::SixTeen
     }
 
     fn map_prg_rom(&self, address: u16) -> Option<Bank> {
-        match (
-            address / self.prg_rom_bank_size() as u16,
-            self.prg_bank_mode,
-        ) {
-            (2, PrgBankMode::One) => Some(Bank::Number(self.prg_bank_number & !1)),
-            (3, PrgBankMode::One) => Some(Bank::Number(self.prg_bank_number | 1)),
-            (2, PrgBankMode::Two) => Some(Bank::Number(0)),
-            (3, PrgBankMode::Two) => Some(Bank::Number(self.prg_bank_number)),
-            (2, PrgBankMode::Three) => Some(Bank::Number(self.prg_bank_number)),
-            (3, PrgBankMode::Three) => Some(Bank::FromLast(0)),
-            _ => None,
-        }
+        let index = address / self.prg_rom_bank_size() as u16;
+        Some(match (index, self.prg_bank_mode) {
+            (2, PrgBankMode::One) => Bank::Number(self.prg_bank_number & !1),
+            (3, PrgBankMode::One) => Bank::Number(self.prg_bank_number | 1),
+            (2, PrgBankMode::Two) => Bank::Number(0),
+            (3, PrgBankMode::Two) => Bank::Number(self.prg_bank_number),
+            (2, PrgBankMode::Three) => Bank::Number(self.prg_bank_number),
+            (3, PrgBankMode::Three) => Bank::FromLast(0),
+            _ => return None,
+        })
     }
 
     fn cpu_write(&mut self, address: u16, value: u8) {
@@ -106,10 +104,8 @@ impl Mapper for Mapper001 {
     }
 
     fn map_chr(&self, address: u16) -> Bank {
-        match (
-            address / self.chr_bank_size() as u16,
-            self.chr_bank_mode_4kb,
-        ) {
+        let index = address / self.chr_bank_size() as u16;
+        match (index, self.chr_bank_mode_4kb) {
             // 8 Kib mode
             (0, false) => Bank::Number(self.chr_bank_number_0 & !1),
             (1, false) => Bank::Number(self.chr_bank_number_0 | 1),

@@ -25,8 +25,8 @@ pub struct PulseChannel<const NUMBER: u16> {
 }
 
 impl<const NUMBER: u16> PulseChannel<NUMBER> {
-    pub fn write(&mut self, address: u16, value: u8, number: u16) {
-        match address - number * 4 {
+    pub fn write(&mut self, address: u16, value: u8) {
+        match address - NUMBER * 4 {
             // 0x4000 or 0x4004 if number == 1 etc
             0x4000 => {
                 self.duty = value >> 6;
@@ -91,7 +91,6 @@ impl<const NUMBER: u16> Sweep<NUMBER> {
     fn target_period(&self, sequencer: &Sequencer) -> u16 {
         let period = sequencer.timer.start;
         let change = period >> self.shift_count;
-        // Rotate right an 11 bit number
         if self.negate {
             period
                 .saturating_sub(change)
