@@ -70,6 +70,6 @@ fn main() {
 pub fn load_nes_rom(bytes: Box<[u8]>) {
     FILE_LOAD_CHANNEL.with(|(sender, _)| {
         let source = FileSource::Bytes(bytes);
-        channel.send(FileLoadInfo::new("nes", source)).unwrap();
+        sender.send(FileLoadInfo::new("nes", source)).unwrap();
     });
 }

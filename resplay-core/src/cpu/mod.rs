@@ -52,14 +52,15 @@ const IRQ_LOAD_VECTOR: u16 = 0xfffe;
 pub struct Cpu {
     /// Program counter
     pub pc: u16,
-    // Stack pointer
+    /// Stack pointer
     pub sp: u8,
-    // Accumulator
+    /// Accumulator
     pub a: u8,
-    // X register
+    /// X register
     pub x: u8,
-    // Y register
+    /// Y register
     pub y: u8,
+    /// Cpu flags
     pub flags: Flags,
     pub bus: CpuBus,
 }
@@ -352,20 +353,15 @@ impl Cpu {
         self.set_zero_neg_flags(result)
     }
 
-    /// Set overflow if the resulting addition overflowed a (negative) 8-bit number with 2's compliment
-    fn set_overflow_flag(&mut self, a: u8, adder: u8, result: u8) {
-        let adder_same_sign = (a ^ adder) & 0b1000_0000 == 0;
-        let result_changed_sign = (a ^ result) & 0b1000_0000 != 0;
-        self.flags
-            .set(Flags::OVERFLOW, adder_same_sign && result_changed_sign);
-    }
-
     fn add_carry(&mut self, adder: u8) {
         let carry = self.flags.contains(Flags::CARRY);
         let result = adder as u16 + self.a as u16 + carry as u16;
         self.flags.set(Flags::CARRY, result > 0xff);
 
-        self.set_overflow_flag(self.a, adder, result as u8);
+        let adder_same_sign = (self.a ^ adder) & 0b1000_0000 == 0;
+        let result_changed_sign = (self.a ^ result as u8) & 0b1000_0000 != 0;
+        self.flags
+            .set(Flags::OVERFLOW, adder_same_sign && result_changed_sign);
         self.set_zero_neg_flags(result as u8);
         self.a = result as u8;
     }
@@ -471,13 +467,13 @@ impl Cpu {
     }
 
     fn adc(&mut self, mode: AddrMode) {
-        let (_, value) = self.read_operand(mode);
+        let value = self.read_operand(mode).1;
         self.add_carry(value);
     }
 
     fn sbc(&mut self, mode: AddrMode) {
         // Inverting results in inverting the sign so the adc can be resued for sbc
-        let (_, value) = self.read_operand(mode);
+        let value = self.read_operand(mode).1;
         self.add_carry(!value);
     }
 

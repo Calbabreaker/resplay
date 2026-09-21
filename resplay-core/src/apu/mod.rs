@@ -88,7 +88,7 @@ impl Apu {
         self.channels.handle_frame_state(state);
 
         if let Some(sender) = self.sender.as_mut()
-            && self.speed_scale != 0.
+            && self.speed_scale > 0.1
         {
             sender.check_send(|| self.channels.sample(&self.config), self.speed_scale);
         }

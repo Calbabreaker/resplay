@@ -23,9 +23,15 @@
             addEventListener("TrunkApplicationStarted", async (event) => {
                 const romPath = new URLSearchParams(location.search).get("rom");
                 if (romPath) {
-                    const response = await fetch(romPath);
-                    const bytes = await response.arrayBuffer();
-                    window.wasmBindings.load_nes_rom(new Uint8Array(bytes));
+                    if (romPath) {
+                        const response = await fetch(romPath);
+                        if (response.ok) {
+                            const bytes = await response.arrayBuffer();
+                            window.wasmBindings.load_nes_rom(new Uint8Array(bytes));
+                        } else {
+                            alert(`Could not fetch rom: ${await response.text()}`);
+                        }
+                    }
                 }
                 document.getElementById("loading").remove();
             });
