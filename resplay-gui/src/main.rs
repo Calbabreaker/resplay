@@ -23,8 +23,10 @@ fn main() -> eframe::Result {
 
     FILE_LOAD_CHANNEL.with(|(sender, _)| {
         if let Some(rom_path) = std::env::args().nth(1) {
-            let source = FileSource::Path(rom_path.into());
-            sender.send(FileLoadInfo::new("nes", source)).unwrap();
+            let bytes = std::fs::read(&rom_path);
+            sender
+                .send(FileLoadInfo::new(rom_path.into(), bytes))
+                .unwrap();
         }
     });
 

@@ -1,21 +1,13 @@
 use crate::{Hotkey, Preferences, egui_util::show_error_dialog, texture::TextureMap};
 
-pub enum FileSource {
-    Bytes(Box<[u8]>),
-    Path(std::path::PathBuf),
+pub struct FileLoadInfo<T> {
+    path: std::path::PathBuf,
+    bytes: Result<Vec<u8>, T>,
 }
 
-pub struct FileLoadInfo {
-    extension: String,
-    source: FileSource,
-}
-
-impl FileLoadInfo {
-    pub fn new(extension: impl Into<String>, source: FileSource) -> Self {
-        Self {
-            extension: extension.into(),
-            source,
-        }
+impl<T> FileLoadInfo<T> {
+    pub fn new(path: std::path::PathBuf, bytes: Result<Vec<u8>, T>) -> Self {
+        Self { path, bytes }
     }
 }
 
@@ -60,22 +52,14 @@ impl State {
         }
     }
 
-    pub fn load_file(&mut self, info: FileLoadInfo) {
-        let mut loaded_file_path = None;
-        let data = match info.source {
-            FileSource::Bytes(bytes) => bytes,
-            FileSource::Path(path) => match std::fs::read(&path) {
-                Ok(bytes) => {
-                    loaded_file_path = Some(path);
-                    bytes.into_boxed_slice()
-                }
-                Err(err) => return show_error_dialog("Failed to load file", format!("{err}")),
-            },
+    pub fn load_file<T: ToString>(&mut self, info: FileLoadInfo<T>) {
+        let bytes = match info.bytes {
+            Ok(bytes) => bytes,
+            Err(err) => return show_error_dialog("Failed to load", err.to_string()),
         };
-
-        match info.extension.as_str() {
-            "nes" => {
-                if let Err(err) = self.emu.load_nes_rom(&data[..]) {
+        match info.path.extension().and_then(|s| s.to_str()) {
+            Some("nes") => {
+                if let Err(err) = self.emu.load_nes_rom(&bytes[..]) {
                     show_error_dialog("Failed to load NES ROM", format!("{err}"));
                 } else {
                     log::trace!(
@@ -84,22 +68,23 @@ impl State {
                     );
                     self.emu.running = true;
                     // Put the file in recent files if we loaded sucessfully
-                    if let Some(path) = loaded_file_path {
-                        // Make sure added path is on top
-                        self.recent_rom_paths.retain(|x| *x != path);
-                        self.recent_rom_paths.insert(0, path.clone());
-                        self.recent_rom_paths.truncate(20);
-                    }
+                    // Make sure added path is on top
+                    self.recent_rom_paths.retain(|x| *x != info.path);
+                    self.recent_rom_paths.insert(0, info.path.clone());
+                    self.recent_rom_paths.truncate(20);
                 }
             }
-            "resav" => {
-                if let Err(err) = self.emu.load_state(&data) {
+            Some("resav") => {
+                if let Err(err) = self.emu.load_state(&bytes) {
                     show_error_dialog("Failed to load state", format!("{err}"));
                 }
             }
-            name => crate::egui_util::show_error_dialog(
+            _ => crate::egui_util::show_error_dialog(
                 "Unknown file extension",
-                format!("Unrecognised file extension with {name}"),
+                format!(
+                    "Unrecognised file extension with {:?}",
+                    info.path.file_name()
+                ),
             ),
         }
     }

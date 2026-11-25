@@ -4,12 +4,12 @@ use std::{
 };
 
 use crate::{
-    Action, DEFAULT_ACTION_MAP, FileLoadInfo, FileSource, Hotkey, KeybindingMap,
-    audio::setup_audio_stream, egui_util::show_error_dialog, ui_window::UiWindowKind,
+    Action, DEFAULT_ACTION_MAP, FileLoadInfo, Hotkey, KeybindingMap, audio::setup_audio_stream,
+    egui_util::show_error_dialog, ui_window::UiWindowKind,
 };
 
 thread_local! {
-    pub static FILE_LOAD_CHANNEL: (Sender<FileLoadInfo>, Receiver<FileLoadInfo>)
+    pub static FILE_LOAD_CHANNEL: (Sender<FileLoadInfo<std::io::Error>>, Receiver<FileLoadInfo<std::io::Error>>)
         = std::sync::mpsc::channel();
 }
 
@@ -55,10 +55,8 @@ impl App {
                 let path = paths.find(|path| ui.button(path.to_string_lossy()).clicked());
 
                 if let Some(path) = path {
-                    self.state.load_file(FileLoadInfo::new(
-                        "nes",
-                        FileSource::Path(path.to_path_buf()),
-                    ));
+                    self.state
+                        .load_file(FileLoadInfo::new(path.clone(), std::fs::read(path)));
                     ui.close();
                 }
             });
@@ -152,18 +150,8 @@ impl App {
         self.preferences.key_bindings.check_key_down(i);
 
         while let Some(file) = i.raw.dropped_files.pop() {
-            if let Some(path) = file.path {
-                let ext = path.extension().unwrap_or_default();
-                self.state.load_file(FileLoadInfo::new(
-                    ext.to_string_lossy().to_string(),
-                    FileSource::Path(path),
-                ));
-            } else if let Some(bytes) = file.bytes {
-                self.state.load_file(FileLoadInfo::new(
-                    file.name.split(".").last().unwrap_or_default(),
-                    FileSource::Bytes(bytes.to_vec().into_boxed_slice()),
-                ));
-            };
+            self.state
+                .load_file(FileLoadInfo::new(file.path().to_path_buf(), file.bytes()));
         }
 
         // Only create the audio stream after an interaction to make sure it plays
@@ -229,12 +217,9 @@ fn show_load_file_dialog(type_name: &'static str, extension: &'static str) {
             .await
         {
             #[cfg(not(target_arch = "wasm32"))]
-            let info = FileLoadInfo::new(extension, FileSource::Path(file.path().to_path_buf()));
+            let info = FileLoadInfo::new(file.path().to_path_buf(), std::fs::read(file.path()));
             #[cfg(target_arch = "wasm32")]
-            let info = FileLoadInfo::new(
-                extension,
-                FileSource::Bytes(file.read().await.into_boxed_slice()),
-            );
+            let info = FileLoadInfo::new(std::path::PathBuf::new(), file.read().await);
             sender.send(info).unwrap();
         }
     })

@@ -96,7 +96,7 @@ fn show_pattern_table<const TABLE_NUMBER: u16>(ui: &mut egui::Ui, state: &mut cr
     };
     ui.vertical(|ui| {
         show_pattern_tiles(ui, state, &config, get_tile_info_fn);
-        let id = egui::Id::new(config.name);
+        let id = egui::Id::unique(config.name);
         if let Some(i) = ui.memory_mut(|m| m.data.get_persisted::<usize>(id)) {
             ui.label(format!("Address: ${:03x}0", (i as u16 + tile_offset)));
         }
@@ -143,7 +143,9 @@ fn show_nametables(ui: &mut egui::Ui, state: &mut crate::State) {
 
 fn show_selected_nametable_info(ui: &mut egui::Ui, emu: &mut resplay_core::Emulator) {
     ui.vertical(|ui| {
-        if let Some(i) = ui.memory_mut(|m| m.data.get_persisted::<usize>("nametable".into())) {
+        if let Some(i) =
+            ui.memory_mut(|m| m.data.get_persisted::<usize>(egui::Id::unique("nametable")))
+        {
             let mirroring = emu.cartridge().map(|c| c.mirroring()).unwrap_or_default();
             ui.label(format!("Mirroring: {mirroring:?}"));
 
@@ -161,7 +163,7 @@ fn show_selected_nametable_info(ui: &mut egui::Ui, emu: &mut resplay_core::Emula
 
 fn show_selected_oam_info(ui: &mut egui::Ui, ppu: &resplay_core::Ppu) {
     ui.vertical(|ui| {
-        if let Some(i) = ui.memory_mut(|m| m.data.get_persisted("oam_grid".into())) {
+        if let Some(i) = ui.memory_mut(|m| m.data.get_persisted(egui::Id::unique("oam_grid"))) {
             let mut sprite = ppu.registers.get_oam_sprite(i, 0).unwrap();
             ui.label(format!("Index: {i}"));
             ui.label(format!("Position (x,y): {}, {}", sprite.x, sprite.y));
@@ -214,7 +216,7 @@ fn show_pattern_tiles<'a>(
     get_tile_info_fn: impl Fn(usize, &'a resplay_core::Ppu) -> (u16, [[u8; 3]; 4]),
 ) -> egui::Response {
     let [tiles_x, tiles_y] = config.tile_count;
-    let id = egui::Id::new(&config.name);
+    let id = egui::Id::unique(&config.name);
     let image_size = [tiles_x * TILE_SIZE as usize, tiles_y * TILE_SIZE as usize];
     let texture = state.texture_map.get(config.name.clone(), image_size);
     let ppu = state.emu.ppu();
